@@ -1,0 +1,14 @@
+# ---- Build & Target ----
+target/
+build/
+bin/
+out/
+*.jar
+*.class
+*.log
+*.logs
+logs/
+lib/
+log/
+libs/
+
