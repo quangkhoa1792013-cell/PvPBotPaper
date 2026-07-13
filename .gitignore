@@ -3,7 +3,6 @@ target/
 build/
 bin/
 out/
-*.jar
 *.class
 *.log
 *.logs

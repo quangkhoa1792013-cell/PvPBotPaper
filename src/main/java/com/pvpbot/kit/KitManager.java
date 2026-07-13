@@ -131,6 +131,21 @@ public class KitManager {
         return true;
     }
 
+    public void giveKitToPlayer(@NotNull Kit kit, @NotNull org.bukkit.entity.Player player) {
+        player.getInventory().clear();
+        for (var entry : kit.getItems().entrySet()) {
+            int slot = entry.getKey();
+            if (slot >= 0 && slot < 40) {
+                player.getInventory().setItem(slot, entry.getValue().clone());
+            }
+        }
+        ItemStack[] armor = new ItemStack[4];
+        for (int i = 0; i < 4; i++) {
+            armor[i] = kit.getArmor(i) != null ? kit.getArmor(i).clone() : null;
+        }
+        player.getInventory().setArmorContents(armor);
+    }
+
     public void giveKit(@NotNull CustomBot bot, @NotNull Kit kit) {
         clearBotInventory(bot);
         var nmsInventory = bot.getInventory();

@@ -55,7 +55,8 @@ public class PvPBotCommand implements TabExecutor {
     );
 
     private static final List<String> KIT_SUBCOMMANDS = List.of(
-            "create-kit", "delete-kit", "list", "give-kit", "give-kit-near", "give-kit-near-random"
+            "create", "create-kit", "delete", "delete-kit", "list", "give",
+            "give-kit", "give-kit-near", "give-kit-near-random", "gui"
     );
 
     private static final List<String> PATH_SUBCOMMANDS = List.of(
@@ -117,6 +118,8 @@ public class PvPBotCommand implements TabExecutor {
             case "path" -> handlePath(sender, args);
             case "gui" -> handleGui(sender);
             case "faction" -> handleFaction(sender, args);
+            case "savekit" -> handleSaveKitDirect(sender, args);
+            case "delkit" -> handleDelKitDirect(sender, args);
             default -> sendUsage(sender);
         }
         return true;
@@ -319,20 +322,34 @@ public class PvPBotCommand implements TabExecutor {
 
     private void handleKit(@NotNull CommandSender sender, @NotNull String[] args) {
         if (args.length < 2) {
-            sender.sendMessage("§cUsage: /pvpbot kit <" + String.join("|", KIT_SUBCOMMANDS) + ">");
+            if (sender instanceof Player player) {
+                settingsGUI.openMain(player);
+            } else {
+                sender.sendMessage("§cUsage: /pvpbot kit <" + String.join("|", KIT_SUBCOMMANDS) + ">");
+            }
             return;
         }
 
         switch (args[1].toLowerCase()) {
-            case "create-kit" -> handleCreateKit(sender, args);
-            case "delete-kit" -> handleDeleteKit(sender, args);
+            case "create", "create-kit" -> handleCreateKit(sender, args);
+            case "delete", "delete-kit" -> handleDeleteKit(sender, args);
             case "list" -> handleKitList(sender);
+            case "give" -> handleGiveNew(sender, args);
             case "give-kit" -> handleGiveKit(sender, args);
             case "give-kit-near" -> handleGiveKitNear(sender, args);
             case "give-kit-near-random" -> handleGiveKitNearRandom(sender, args);
+            case "gui" -> handleKitGui(sender);
             default ->
                 sender.sendMessage("§cUnknown kit subcommand. Use: " + String.join(", ", KIT_SUBCOMMANDS));
         }
+    }
+
+    private void handleKitGui(@NotNull CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("§cOnly players can open the GUI");
+            return;
+        }
+        settingsGUI.openMain(player);
     }
 
     private void handleCreateKit(@NotNull CommandSender sender, @NotNull String[] args) {
@@ -358,6 +375,36 @@ public class PvPBotCommand implements TabExecutor {
             return;
         }
         String name = args[2];
+        if (kitManager.deleteKit(name)) {
+            sender.sendMessage("§aKit '" + name + "' deleted");
+        } else {
+            sender.sendMessage("§cNo kit found with name '" + name + "'");
+        }
+    }
+
+    private void handleSaveKitDirect(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("§cOnly players can create kits");
+            return;
+        }
+        if (args.length < 2) {
+            sender.sendMessage("§cUsage: /pvpbot savekit <name>");
+            return;
+        }
+        String name = args[1];
+        if (kitManager.createKit(name, player)) {
+            sender.sendMessage("§aKit '" + name + "' created from your inventory");
+        } else {
+            sender.sendMessage("§cKit '" + name + "' already exists");
+        }
+    }
+
+    private void handleDelKitDirect(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage("§cUsage: /pvpbot delkit <name>");
+            return;
+        }
+        String name = args[1];
         if (kitManager.deleteKit(name)) {
             sender.sendMessage("§aKit '" + name + "' deleted");
         } else {
@@ -398,6 +445,33 @@ public class PvPBotCommand implements TabExecutor {
         }
         kitManager.giveKit(bot, kit);
         sender.sendMessage("§aKit '" + kitName + "' applied to bot '" + botName + "'");
+    }
+
+    private void handleGiveNew(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (args.length < 4) {
+            sender.sendMessage("§cUsage: /pvpbot kit give <kitname> <player/bot>");
+            return;
+        }
+        String kitName = args[2];
+        Kit kit = kitManager.getKit(kitName);
+        if (kit == null) {
+            sender.sendMessage("§cNo kit found with name '" + kitName + "'");
+            return;
+        }
+        String target = args[3];
+        CustomBot bot = botManager.getBot(target);
+        if (bot != null) {
+            kitManager.giveKit(bot, kit);
+            sender.sendMessage("§aKit '" + kitName + "' applied to bot '" + target + "'");
+            return;
+        }
+        Player player = Bukkit.getPlayer(target);
+        if (player != null) {
+            kitManager.giveKitToPlayer(kit, player);
+            sender.sendMessage("§aKit '" + kitName + "' applied to player '" + target + "'");
+            return;
+        }
+        sender.sendMessage("§cNo bot or player found with name '" + target + "'");
     }
 
     private void handleGiveKitNear(@NotNull CommandSender sender, @NotNull String[] args) {
@@ -1286,7 +1360,7 @@ public class PvPBotCommand implements TabExecutor {
             @NotNull String[] args
     ) {
         if (args.length == 1) {
-            List<String> subs = new ArrayList<>(List.of("spawn", "remove", "list", "settings", "move", "stop", "kit", "path", "faction"));
+            List<String> subs = new ArrayList<>(List.of("spawn", "remove", "list", "settings", "move", "stop", "kit", "path", "faction", "savekit", "delkit"));
             if (sender.hasPermission("pvpbot.admin")) {
                 subs.addAll(List.of("removeall", "reload", "gui"));
             }
@@ -1297,6 +1371,9 @@ public class PvPBotCommand implements TabExecutor {
 
         if (args.length == 2) {
             String cmd = args[0].toLowerCase();
+            if (cmd.equals("savekit") || cmd.equals("delkit")) {
+                return Collections.emptyList();
+            }
             if (cmd.equals("remove") || cmd.equals("settings") || cmd.equals("move") || cmd.equals("stop")) {
                 return botManager.getBotNames().stream()
                         .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
@@ -1328,7 +1405,7 @@ public class PvPBotCommand implements TabExecutor {
                             .filter(name -> name.toLowerCase().startsWith(args[2].toLowerCase()))
                             .collect(Collectors.toList());
                 }
-                if (sub.equals("delete-kit") || sub.equals("give-kit") || sub.equals("give-kit-near")) {
+                if (sub.equals("delete") || sub.equals("delete-kit") || sub.equals("give") || sub.equals("give-kit") || sub.equals("give-kit-near")) {
                     return kitManager.getAllKits().stream()
                             .map(Kit::getName)
                             .filter(n -> n.toLowerCase().startsWith(args[2].toLowerCase()))
@@ -1398,6 +1475,13 @@ public class PvPBotCommand implements TabExecutor {
             if (cmd.equals("kit") && sub.equals("give-kit")) {
                 return kitManager.getAllKits().stream()
                         .map(Kit::getName)
+                        .filter(n -> n.toLowerCase().startsWith(args[3].toLowerCase()))
+                        .collect(Collectors.toList());
+            }
+            if (cmd.equals("kit") && sub.equals("give")) {
+                List<String> targets = new ArrayList<>(botManager.getBotNames());
+                targets.addAll(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList());
+                return targets.stream()
                         .filter(n -> n.toLowerCase().startsWith(args[3].toLowerCase()))
                         .collect(Collectors.toList());
             }

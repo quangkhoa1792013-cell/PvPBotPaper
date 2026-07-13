@@ -202,7 +202,7 @@ public class StatsDatabase {
             ps.setLong(1, cutoff);
             int deleted = ps.executeUpdate();
             if (deleted > 0) {
-                System.out.println("[PvPBot Stats] Cleaned up " + deleted + " old records");
+                org.bukkit.Bukkit.getLogger().info("[PvPBot Stats] Cleaned up " + deleted + " old records");
             }
         } catch (SQLException e) {
             e.printStackTrace();

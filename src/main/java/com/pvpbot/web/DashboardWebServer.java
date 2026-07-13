@@ -4,6 +4,7 @@ import com.pvpbot.stats.StatsDatabase;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
+import org.bukkit.Bukkit;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
@@ -39,9 +40,9 @@ public class DashboardWebServer {
             server.createContext("/api/stream", this::handleStream);
             server.setExecutor(Executors.newCachedThreadPool());
             server.start();
-            System.out.println("[PvPBot Dashboard] Web server started on port " + port);
+            org.bukkit.Bukkit.getLogger().info("[PvPBot Dashboard] Web server started on port " + port);
         } catch (IOException e) {
-            System.err.println("[PvPBot Dashboard] Failed to start: " + e.getMessage());
+            org.bukkit.Bukkit.getLogger().warning("[PvPBot Dashboard] Failed to start: " + e.getMessage());
         }
     }
 

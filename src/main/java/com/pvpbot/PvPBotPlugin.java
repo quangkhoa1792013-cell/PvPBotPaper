@@ -31,7 +31,7 @@ public class PvPBotPlugin extends JavaPlugin {
         this.kitManager = new KitManager(getDataFolder());
         this.pathManager = new PathManager(this);
         this.factionManager = new FactionManager(this);
-        this.settingsGUI = new SettingsGUI(this, botManager);
+        this.settingsGUI = new SettingsGUI(this, botManager, kitManager, factionManager, pathManager);
 
         this.statsDatabase = StatsDatabase.getInstance();
         this.statsDatabase.initialize(getDataFolder());
