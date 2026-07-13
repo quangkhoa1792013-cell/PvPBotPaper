@@ -28,7 +28,6 @@ public class StatsDatabase {
     public void initialize(File dataFolder) {
         try {
             File dbFile = new File(dataFolder, "metrics.db");
-            Class.forName("org.sqlite.JDBC");
             connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
             createTables();
             loadNameCache();

@@ -94,6 +94,11 @@ public class PvPBotCommand implements TabExecutor {
             @NotNull String label,
             @NotNull String[] args
     ) {
+        if (!sender.hasPermission("pvpbot.use")) {
+            sender.sendMessage("§cYou don't have permission to use this command");
+            return true;
+        }
+
         if (args.length == 0) {
             sendUsage(sender);
             return true;

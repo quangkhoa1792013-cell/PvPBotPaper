@@ -10,8 +10,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DashboardWebServer {
@@ -22,9 +21,17 @@ public class DashboardWebServer {
     private final AtomicInteger onlinePlayers = new AtomicInteger(0);
     private volatile double currentTps = 20.0;
     private String dashboardHtml;
+    private ScheduledExecutorService keepaliveScheduler;
 
     public void start(int port) {
         try {
+            keepaliveScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "pvpbot-sse-keepalive");
+                t.setDaemon(true);
+                return t;
+            });
+            keepaliveScheduler.scheduleAtFixedRate(this::broadcastKeepalive, 15, 15, TimeUnit.SECONDS);
+
             server = HttpServer.create(new InetSocketAddress(port), 0);
             server.createContext("/", this::handleRoot);
             server.createContext("/api/stats", this::handleStats);
@@ -39,6 +46,10 @@ public class DashboardWebServer {
     }
 
     public void stop() {
+        if (keepaliveScheduler != null) {
+            keepaliveScheduler.shutdown();
+            try { keepaliveScheduler.awaitTermination(2, TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
+        }
         if (server != null) server.stop(1);
         for (SSEClient client : sseClients) {
             try { client.close(); } catch (Exception ignored) {}
@@ -53,9 +64,12 @@ public class DashboardWebServer {
     }
 
     public void broadcast(String eventType, String data) {
-        String message = "event: " + eventType + "\ndata: " + data + "\n\n";
+        byte[] message = ("event: " + eventType + "\ndata: " + data + "\n\n").getBytes(StandardCharsets.UTF_8);
         for (SSEClient client : sseClients) {
-            client.send(message);
+            if (!client.send(message)) {
+                sseClients.remove(client);
+                try { client.close(); } catch (Exception ignored) {}
+            }
         }
     }
 
@@ -120,6 +134,16 @@ public class DashboardWebServer {
         exchange.getResponseBody().close();
     }
 
+    private void broadcastKeepalive() {
+        byte[] ping = ": keepalive\n\n".getBytes(StandardCharsets.UTF_8);
+        for (SSEClient client : sseClients) {
+            if (!client.send(ping)) {
+                sseClients.remove(client);
+                try { client.close(); } catch (Exception ignored) {}
+            }
+        }
+    }
+
     private void handleStream(HttpExchange exchange) throws IOException {
         exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
         exchange.getResponseHeaders().set("Cache-Control", "no-cache");
@@ -132,18 +156,7 @@ public class DashboardWebServer {
         sseClients.add(client);
 
         try {
-            byte[] keepalive = ": keepalive\n\n".getBytes(StandardCharsets.UTF_8);
-            while (!Thread.interrupted()) {
-                try {
-                    out.write(keepalive);
-                    out.flush();
-                    Thread.sleep(15000);
-                } catch (InterruptedException e) {
-                    break;
-                } catch (IOException e) {
-                    break;
-                }
-            }
+            client.await();
         } finally {
             sseClients.remove(client);
             try { client.close(); } catch (Exception ignored) {}
@@ -342,19 +355,37 @@ setInterval(loadStats, 30000);
 
     private static class SSEClient {
         private final OutputStream out;
+        private final CountDownLatch disconnectLatch = new CountDownLatch(1);
 
         SSEClient(OutputStream out) {
             this.out = out;
         }
 
-        void send(String message) {
+        boolean send(byte[] data) {
             try {
-                out.write(message.getBytes(StandardCharsets.UTF_8));
+                out.write(data);
                 out.flush();
-            } catch (IOException ignored) {}
+                return true;
+            } catch (IOException e) {
+                disconnectLatch.countDown();
+                return false;
+            }
+        }
+
+        void send(String message) {
+            send(message.getBytes(StandardCharsets.UTF_8));
+        }
+
+        void await() {
+            try {
+                disconnectLatch.await();
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         void close() throws IOException {
+            disconnectLatch.countDown();
             out.close();
         }
     }
