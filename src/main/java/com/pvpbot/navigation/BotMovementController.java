@@ -3,10 +3,14 @@ package com.pvpbot.navigation;
 import com.pvpbot.bot.BotSettings;
 import com.pvpbot.bot.CustomBot;
 import com.pvpbot.combat.CombatTargetSelector;
+import com.pvpbot.navigation.path.BotPath;
+import com.pvpbot.navigation.path.BotPath.WalkType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
@@ -46,6 +50,9 @@ public class BotMovementController {
 
     @Nullable private LivingEntity combatTarget;
     @Nullable private Entity threatEntity;
+
+    @Nullable private BotPath activeBotPath;
+    private int pathWaypointIndex;
 
     private int targetSearchCooldown;
 
@@ -100,6 +107,8 @@ public class BotMovementController {
         this.combatTarget = null;
         this.threatEntity = null;
         this.wanderTarget = null;
+        this.activeBotPath = null;
+        this.pathWaypointIndex = 0;
         this.shieldState = 0;
         this.shieldTimer = 0;
         this.rangedState = 0;
@@ -111,6 +120,131 @@ public class BotMovementController {
 
     public boolean hasPath() {
         return currentPath != null && pathIndex < currentPath.size();
+    }
+
+    public void setCurrentPath(@NotNull BotPath path) {
+        this.activeBotPath = path;
+        this.pathWaypointIndex = 0;
+        this.currentPath = null;
+        this.pathTarget = null;
+    }
+
+    public void clearActivePath() {
+        this.activeBotPath = null;
+        this.pathWaypointIndex = 0;
+    }
+
+    @Nullable
+    public BotPath getActiveBotPath() {
+        return activeBotPath;
+    }
+
+    private void followBotPath(@NotNull Level level) {
+        if (activeBotPath == null) return;
+        List<org.bukkit.Location> wps = activeBotPath.getWaypoints();
+        if (wps.isEmpty()) {
+            activeBotPath = null;
+            return;
+        }
+
+        if (pathWaypointIndex >= wps.size()) {
+            if (activeBotPath.isLoop()) {
+                pathWaypointIndex = 0;
+            } else {
+                activeBotPath = null;
+                pathWaypointIndex = 0;
+                applyFriction(bot.onGround());
+                return;
+            }
+        }
+
+        org.bukkit.Location targetWp = wps.get(pathWaypointIndex);
+        BlockPos targetBlock = new BlockPos(targetWp.getBlockX(), targetWp.getBlockY(), targetWp.getBlockZ());
+        Vec3 botPos = bot.position();
+
+        double dx = targetWp.getX() - botPos.x;
+        double dz = targetWp.getZ() - botPos.z;
+        double distSq = dx * dx + dz * dz;
+
+        if (distSq < 1.5 * 1.5) {
+            pathWaypointIndex++;
+            if (pathWaypointIndex >= wps.size()) {
+                if (activeBotPath.isLoop()) {
+                    pathWaypointIndex = 0;
+                } else {
+                    activeBotPath = null;
+                    pathWaypointIndex = 0;
+                    applyFriction(bot.onGround());
+                    return;
+                }
+            }
+            targetWp = wps.get(pathWaypointIndex);
+            if (targetWp == null) return;
+            targetBlock = new BlockPos(targetWp.getBlockX(), targetWp.getBlockY(), targetWp.getBlockZ());
+            dx = targetWp.getX() - botPos.x;
+            dz = targetWp.getZ() - botPos.z;
+        }
+
+        int targetY = targetBlock.getY();
+        int botY = bot.blockPosition().getY();
+        boolean onGround = bot.onGround();
+
+        WalkType wt = activeBotPath.getWalkType();
+        double speed;
+        boolean useBhop;
+
+        switch (wt) {
+            case SPRINT -> {
+                speed = 0.35;
+                useBhop = false;
+            }
+            case BHOP -> {
+                speed = 0.25;
+                useBhop = true;
+            }
+            default -> {
+                speed = settings.getMoveSpeed();
+                useBhop = false;
+            }
+        }
+
+        if (targetY > botY && onGround) {
+            bot.setDeltaMovement(bot.getDeltaMovement().x, JUMP_VELOCITY, bot.getDeltaMovement().z);
+        } else if (useBhop && onGround) {
+            Vec3 vel = bot.getDeltaMovement();
+            if (vel.x * vel.x + vel.z * vel.z > 0.001) {
+                bot.setDeltaMovement(vel.x, JUMP_VELOCITY, vel.z);
+                bot.setDeltaMovement(vel.x * BHOP_MOMENTUM, JUMP_VELOCITY, vel.z * BHOP_MOMENTUM);
+            }
+        }
+
+        double len = Math.sqrt(dx * dx + dz * dz);
+        if (len > 0.01) {
+            double velX = (dx / len) * speed;
+            double velZ = (dz / len) * speed;
+            Vec3 currentVel = bot.getDeltaMovement();
+            if (onGround) {
+                bot.setDeltaMovement(velX, currentVel.y, velZ);
+            } else {
+                bot.setDeltaMovement(
+                        currentVel.x + (velX - currentVel.x) * 0.3,
+                        currentVel.y,
+                        currentVel.z + (velZ - currentVel.z) * 0.3
+                );
+            }
+        }
+    }
+
+    private void updatePathRotation() {
+        if (activeBotPath == null) return;
+        List<org.bukkit.Location> wps = activeBotPath.getWaypoints();
+        if (wps.isEmpty() || pathWaypointIndex >= wps.size()) return;
+        org.bukkit.Location target = wps.get(pathWaypointIndex);
+        smoothRotateTowards(target.getX(), target.getY() + 0.5, target.getZ());
+    }
+
+    public boolean isRetreating() {
+        return settings.isRetreat() && shouldRetreat();
     }
 
     public boolean isMoving() {
@@ -135,7 +269,9 @@ public class BotMovementController {
         boolean maceActive = bot.getMaceComboController().isActive();
 
         if (!maceActive) {
-            if (combatTarget != null) {
+            if (activeBotPath != null) {
+                followBotPath(level);
+            } else if (combatTarget != null) {
                 handleCombatMovement();
             } else if (settings.isRetreat() && shouldRetreat()) {
                 handleRetreatMovement();
@@ -145,13 +281,15 @@ public class BotMovementController {
                 followPath(level);
             }
 
-            if (hasPath()) {
+            if (activeBotPath == null && hasPath()) {
                 moveAlongPath(level);
             }
         }
 
         if (combatTarget != null && !maceActive) {
             updateRotation(level);
+        } else if (activeBotPath != null && !maceActive) {
+            updatePathRotation();
         } else if (hasPath() && !maceActive) {
             updateRotation(level);
         }
@@ -480,6 +618,23 @@ public class BotMovementController {
 
     private void executeAttack() {
         if (combatTarget == null) return;
+
+        double missChance = settings.getMissChance();
+        if (missChance > 0 && bot.getRandom().nextDouble() * 100 < missChance) {
+            bot.swing(InteractionHand.MAIN_HAND);
+            bot.level().playSound(null, bot.getX(), bot.getY(), bot.getZ(),
+                    SoundEvents.PLAYER_ATTACK_NODAMAGE, bot.getSoundSource(), 1.0f, 1.0f);
+            attackCooldownTimer = settings.getAttackCooldown();
+            return;
+        }
+
+        double mistakeChance = settings.getMistakeChance();
+        if (mistakeChance > 0 && bot.getRandom().nextDouble() * 100 < mistakeChance) {
+            float yawOffset = (bot.getRandom().nextFloat() - 0.5f) * 90f;
+            float pitchOffset = (bot.getRandom().nextFloat() - 0.5f) * 30f;
+            bot.setYRot(bot.getYRot() + yawOffset);
+            bot.setXRot(bot.getXRot() + pitchOffset);
+        }
 
         boolean wasBlocking = combatTarget.isBlocking();
         boolean isHoldingAxe = bot.getMainHandItem().getItem() instanceof AxeItem;

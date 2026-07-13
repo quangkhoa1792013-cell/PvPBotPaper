@@ -2,10 +2,13 @@ package com.pvpbot.combat;
 
 import com.pvpbot.bot.BotSettings;
 import com.pvpbot.bot.CustomBot;
+import com.pvpbot.faction.Faction;
+import com.pvpbot.faction.FactionManager;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.level.ServerLevel;
+import org.bukkit.Bukkit;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -23,9 +26,12 @@ public class CombatTargetSelector {
                 entity -> isValidTarget(bot, entity, settings, sqDist)
         );
 
+        FactionManager factionManager = getFactionManager();
+
         LivingEntity closest = null;
         double closestDistSq = Double.MAX_VALUE;
         for (LivingEntity candidate : candidates) {
+            if (!canTarget(bot, candidate, factionManager)) continue;
             double distSq = bot.distanceToSqr(candidate);
             if (distSq < closestDistSq) {
                 closestDistSq = distSq;
@@ -46,5 +52,26 @@ public class CombatTargetSelector {
         if (target instanceof Mob && settings.isTargetMobs()) return true;
 
         return false;
+    }
+
+    private static boolean canTarget(CustomBot bot, LivingEntity target, @Nullable FactionManager fm) {
+        if (fm == null) return true;
+        Faction botFaction = fm.getFactionOf(bot.getUUID());
+        Faction targetFaction = fm.getFactionOf(target.getUUID());
+        if (botFaction == null || targetFaction == null) return true;
+        if (!botFaction.equals(targetFaction)) {
+            if (botFaction.isEnemy(targetFaction.getName())) return true;
+            return true;
+        }
+        return botFaction.isFriendlyFire();
+    }
+
+    @Nullable
+    private static FactionManager getFactionManager() {
+        org.bukkit.plugin.Plugin p = Bukkit.getPluginManager().getPlugin("PvPBot");
+        if (p instanceof com.pvpbot.PvPBotPlugin pp) {
+            return pp.getFactionManager();
+        }
+        return null;
     }
 }

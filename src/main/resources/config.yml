@@ -56,3 +56,17 @@ bot-settings:
 
   # Mace Wind-Charge Combo
   mace: false
+
+  # Survival / Utilities
+  auto-armor: false
+  auto-weapon: false
+  auto-eat: false
+  auto-potion: false
+  auto-mend: false
+  auto-totem: false
+  totem-priority: false
+
+  # Realism / Difficulty
+  miss-chance: 0
+  mistake-chance: 0
+  profile-lagg-fix: false

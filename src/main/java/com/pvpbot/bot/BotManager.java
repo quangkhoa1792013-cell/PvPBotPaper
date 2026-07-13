@@ -55,7 +55,8 @@ public class BotManager {
             }
         }
 
-        CustomBot bot = CustomBot.spawn(location, finalName, owner.getUniqueId());
+        boolean profileLagFix = defaultSettings.isProfileLagFix();
+        CustomBot bot = CustomBot.spawn(location, finalName, owner.getUniqueId(), profileLagFix);
 
         BotSettings botSettings = bot.getSettings();
         botSettings.setMoveSpeed(defaultSettings.getMoveSpeed());
@@ -91,6 +92,16 @@ public class BotManager {
         botSettings.setArrowPrediction(defaultSettings.isArrowPrediction());
         botSettings.setRangedStrafe(defaultSettings.isRangedStrafe());
         botSettings.setRangedRetreat(defaultSettings.isRangedRetreat());
+        botSettings.setAutoArmor(defaultSettings.isAutoArmor());
+        botSettings.setAutoWeapon(defaultSettings.isAutoWeapon());
+        botSettings.setAutoEat(defaultSettings.isAutoEat());
+        botSettings.setAutoPotion(defaultSettings.isAutoPotion());
+        botSettings.setAutoMend(defaultSettings.isAutoMend());
+        botSettings.setAutoTotem(defaultSettings.isAutoTotem());
+        botSettings.setTotemPriority(defaultSettings.isTotemPriority());
+        botSettings.setMissChance(defaultSettings.getMissChance());
+        botSettings.setMistakeChance(defaultSettings.getMistakeChance());
+        botSettings.setProfileLagFix(defaultSettings.isProfileLagFix());
 
         bots.put(bot.getUUID(), bot);
         nameIndex.put(bot.getBotName().toLowerCase(), bot.getUUID());
@@ -99,6 +110,8 @@ public class BotManager {
         if (botPlayer != null) {
             botPlayer.setPlayerListName("§7[Bot] §f" + bot.getBotName());
         }
+
+        com.pvpbot.stats.StatsDatabase.getInstance().recordBotSpawn(bot.getBotName());
 
         return bot;
     }

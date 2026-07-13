@@ -43,6 +43,18 @@ public class BotSettings {
     private boolean rangedStrafe;
     private boolean rangedRetreat;
 
+    private boolean autoArmor;
+    private boolean autoWeapon;
+    private boolean autoEat;
+    private boolean autoPotion;
+    private boolean autoMend;
+    private boolean autoTotem;
+    private boolean totemPriority;
+
+    private double missChance;
+    private double mistakeChance;
+    private boolean profileLagFix;
+
     public BotSettings() {
         setDefaults();
     }
@@ -89,6 +101,18 @@ public class BotSettings {
         this.arrowPrediction = true;
         this.rangedStrafe = true;
         this.rangedRetreat = true;
+
+        this.autoArmor = false;
+        this.autoWeapon = false;
+        this.autoEat = false;
+        this.autoPotion = false;
+        this.autoMend = false;
+        this.autoTotem = false;
+        this.totemPriority = false;
+
+        this.missChance = 0;
+        this.mistakeChance = 0;
+        this.profileLagFix = false;
     }
 
     public void loadFromConfig(@NotNull FileConfiguration config) {
@@ -129,6 +153,18 @@ public class BotSettings {
         this.arrowPrediction = config.getBoolean("bot-settings.arrow-prediction", true);
         this.rangedStrafe = config.getBoolean("bot-settings.ranged-strafe", true);
         this.rangedRetreat = config.getBoolean("bot-settings.ranged-retreat", true);
+
+        this.autoArmor = config.getBoolean("bot-settings.auto-armor", false);
+        this.autoWeapon = config.getBoolean("bot-settings.auto-weapon", false);
+        this.autoEat = config.getBoolean("bot-settings.auto-eat", false);
+        this.autoPotion = config.getBoolean("bot-settings.auto-potion", false);
+        this.autoMend = config.getBoolean("bot-settings.auto-mend", false);
+        this.autoTotem = config.getBoolean("bot-settings.auto-totem", false);
+        this.totemPriority = config.getBoolean("bot-settings.totem-priority", false);
+
+        this.missChance = Math.max(0, Math.min(100, config.getDouble("bot-settings.miss-chance", 0)));
+        this.mistakeChance = Math.max(0, Math.min(100, config.getDouble("bot-settings.mistake-chance", 0)));
+        this.profileLagFix = config.getBoolean("bot-settings.profile-lagg-fix", false);
     }
 
     public double getMoveSpeed() { return moveSpeed; }
@@ -235,4 +271,34 @@ public class BotSettings {
 
     public boolean isRangedRetreat() { return rangedRetreat; }
     public void setRangedRetreat(boolean rangedRetreat) { this.rangedRetreat = rangedRetreat; }
+
+    public boolean isAutoArmor() { return autoArmor; }
+    public void setAutoArmor(boolean autoArmor) { this.autoArmor = autoArmor; }
+
+    public boolean isAutoWeapon() { return autoWeapon; }
+    public void setAutoWeapon(boolean autoWeapon) { this.autoWeapon = autoWeapon; }
+
+    public boolean isAutoEat() { return autoEat; }
+    public void setAutoEat(boolean autoEat) { this.autoEat = autoEat; }
+
+    public boolean isAutoPotion() { return autoPotion; }
+    public void setAutoPotion(boolean autoPotion) { this.autoPotion = autoPotion; }
+
+    public boolean isAutoMend() { return autoMend; }
+    public void setAutoMend(boolean autoMend) { this.autoMend = autoMend; }
+
+    public boolean isAutoTotem() { return autoTotem; }
+    public void setAutoTotem(boolean autoTotem) { this.autoTotem = autoTotem; }
+
+    public boolean isTotemPriority() { return totemPriority; }
+    public void setTotemPriority(boolean totemPriority) { this.totemPriority = totemPriority; }
+
+    public double getMissChance() { return missChance; }
+    public void setMissChance(double missChance) { this.missChance = Math.max(0, Math.min(100, missChance)); }
+
+    public double getMistakeChance() { return mistakeChance; }
+    public void setMistakeChance(double mistakeChance) { this.mistakeChance = Math.max(0, Math.min(100, mistakeChance)); }
+
+    public boolean isProfileLagFix() { return profileLagFix; }
+    public void setProfileLagFix(boolean profileLagFix) { this.profileLagFix = profileLagFix; }
 }

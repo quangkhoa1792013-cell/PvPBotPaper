@@ -1,7 +1,13 @@
 package com.pvpbot.bot;
 
 import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
 import com.pvpbot.combat.MaceComboController;
+import com.pvpbot.combat.SurvivalController;
+import com.pvpbot.faction.Faction;
+import com.pvpbot.faction.FactionManager;
+import com.pvpbot.kit.Kit;
+import com.pvpbot.kit.KitManager;
 import com.pvpbot.navigation.ArrowPrediction;
 import com.pvpbot.navigation.BotMovementController;
 import com.pvpbot.network.FakeConnection;
@@ -35,10 +41,16 @@ import org.bukkit.craftbukkit.CraftWorld;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 
 public class CustomBot extends ServerPlayer {
+
+    private static final String STEVE_TEXTURE = Base64.getEncoder().encodeToString(
+            ("{\"textures\":{\"SKIN\":{\"url\":\"http://textures.minecraft.net/texture/" +
+             "8dc4035488dc7cd80b48b7b36b593bad87d3b985cda259ed3cb4b62cd3cb4647\"}}}").getBytes()
+    );
 
     private static final Item[] SWORDS = {
             Items.NETHERITE_SWORD, Items.DIAMOND_SWORD, Items.IRON_SWORD,
@@ -53,10 +65,12 @@ public class CustomBot extends ServerPlayer {
     private final BotSettings botSettings;
     private final BotMovementController movementController;
     private final MaceComboController maceComboController;
+    private final SurvivalController survivalController;
 
     private int attackCooldownTicks;
     private boolean awaitingCritJump;
     private int weaponCheckCooldown;
+    private boolean deathNotified;
 
     public CustomBot(
             @NotNull MinecraftServer server,
@@ -74,6 +88,7 @@ public class CustomBot extends ServerPlayer {
         this.fakeConnection = new FakeConnection();
         this.movementController = new BotMovementController(this, botSettings);
         this.maceComboController = new MaceComboController(this, botSettings);
+        this.survivalController = new SurvivalController(this, botSettings);
 
         CommonListenerCookie cookie = CommonListenerCookie.createInitial(profile, false);
         this.fakeListener = new FakeServerGamePacketListenerImpl(
@@ -88,12 +103,26 @@ public class CustomBot extends ServerPlayer {
             @Nullable String name,
             @NotNull UUID ownerUUID
     ) {
+        return spawn(location, name, ownerUUID, false);
+    }
+
+    @NotNull
+    public static CustomBot spawn(
+            @NotNull Location location,
+            @Nullable String name,
+            @NotNull UUID ownerUUID,
+            boolean profileLagFix
+    ) {
         MinecraftServer server = ((CraftServer) Bukkit.getServer()).getServer();
         ServerLevel level = ((CraftWorld) location.getWorld()).getHandle();
 
         String botName = (name != null && !name.isEmpty()) ? name : generateRandomName();
         UUID botUUID = UUID.randomUUID();
         GameProfile profile = new GameProfile(botUUID, botName);
+
+        if (profileLagFix) {
+            profile.properties().put("textures", new Property("textures", STEVE_TEXTURE, ""));
+        }
 
         CustomBot bot = new CustomBot(server, level, profile, ClientInformation.createDefault(), ownerUUID, botName);
 
@@ -160,6 +189,15 @@ public class CustomBot extends ServerPlayer {
             }
             movementController.tick();
             maceComboController.tick(movementController.getCombatTarget());
+            survivalController.tick(
+                    movementController.getCombatTarget(),
+                    movementController.isRetreating(),
+                    maceComboController.isActive()
+            );
+            if (!deathNotified && !isAlive()) {
+                deathNotified = true;
+                com.pvpbot.stats.StatsDatabase.getInstance().recordBotDeath();
+            }
             onBotTick();
         } catch (Exception ignored) {
         }
@@ -178,6 +216,7 @@ public class CustomBot extends ServerPlayer {
         serverInstance.getPlayerList().remove(this);
         stopRiding();
         remove(Entity.RemovalReason.KILLED);
+        deathNotified = true;
     }
 
     public void setCombatTarget(@Nullable LivingEntity target) {
@@ -447,14 +486,27 @@ public class CustomBot extends ServerPlayer {
 
     @Override
     public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
-        boolean result = super.hurtServer(level, source, amount);
-        if (result && botSettings.isRevenge()) {
-            Entity attacker = source.getEntity();
-            if (attacker instanceof LivingEntity living && !living.equals(this)) {
-                movementController.setCombatTarget(living);
+        Entity attacker = source.getEntity();
+        if (attacker != null && !attacker.equals(this)) {
+            FactionManager fm = getFactionManager();
+            if (fm != null && !fm.canAttack(attacker.getUUID(), this.getUUID())) {
+                return false;
             }
         }
+        boolean result = super.hurtServer(level, source, amount);
+        if (result && botSettings.isRevenge() && attacker instanceof LivingEntity living) {
+            movementController.setCombatTarget(living);
+        }
         return result;
+    }
+
+    @Nullable
+    private FactionManager getFactionManager() {
+        org.bukkit.plugin.Plugin p = org.bukkit.Bukkit.getPluginManager().getPlugin("PvPBot");
+        if (p instanceof com.pvpbot.PvPBotPlugin pp) {
+            return pp.getFactionManager();
+        }
+        return null;
     }
 
     // --- Getters ---
@@ -482,6 +534,22 @@ public class CustomBot extends ServerPlayer {
     @NotNull
     public MaceComboController getMaceComboController() {
         return maceComboController;
+    }
+
+    @NotNull
+    public SurvivalController getSurvivalController() {
+        return survivalController;
+    }
+
+    public void finishUsingItem() {
+        completeUsingItem();
+    }
+
+    public void clearInventory() {
+        var inv = getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            inv.setItem(i, net.minecraft.world.item.ItemStack.EMPTY);
+        }
     }
 
     @NotNull
