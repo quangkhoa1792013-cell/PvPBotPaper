@@ -1,7 +1,7 @@
 name: PvPBot
 version: "${version}"
 main: com.pvpbot.PvPBotPlugin
-api-version: "1.21"
+api-version: "1.21.11"
 description: Advanced PvP bot system with NMS fake players for Paper 1.21.11
 
 commands:
