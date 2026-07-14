@@ -105,13 +105,14 @@ public class SettingsGUI implements Listener {
         ranged.put(8, new SettingDef("bot-settings.mace", "Mace Combo", Material.MACE, SettingType.BOOLEAN, 0, 1, 1));
         PAGE_SETTINGS.put(Page.RANGED, ranged);
 
-        Map<Integer, SettingDef> realism = new LinkedHashMap<>();
+Map<Integer, SettingDef> realism = new LinkedHashMap<>();
         realism.put(0, new SettingDef("bot-settings.miss-chance", "Miss Chance %", Material.BARRIER, SettingType.DOUBLE, 0, 100, 5));
         realism.put(1, new SettingDef("bot-settings.mistake-chance", "Mistake Chance %", Material.NETHER_STAR, SettingType.DOUBLE, 0, 100, 5));
         realism.put(2, new SettingDef("bot-settings.profile-lagg-fix", "Profile Lag Fix", Material.ENDER_PEARL, SettingType.BOOLEAN, 0, 1, 1));
         realism.put(3, new SettingDef("bot-settings.auto-eat", "Auto Eat", Material.COOKED_BEEF, SettingType.BOOLEAN, 0, 1, 1));
         realism.put(4, new SettingDef("bot-settings.auto-potion", "Auto Potion", Material.POTION, SettingType.BOOLEAN, 0, 1, 1));
         realism.put(5, new SettingDef("bot-settings.auto-mend", "Auto Mend", Material.EXPERIENCE_BOTTLE, SettingType.BOOLEAN, 0, 1, 1));
+        realism.put(6, new SettingDef("bot-settings.show-in-tab", "Show in TAB", Material.LIME_WOOL, SettingType.BOOLEAN, 0, 1, 1));
         PAGE_SETTINGS.put(Page.REALISM, realism);
     }
 
@@ -522,8 +523,9 @@ public class SettingsGUI implements Listener {
             case "bot-settings.ranged-max-range" -> defaults.getRangedMaxRange();
             case "bot-settings.mace" -> defaults.isMace();
             case "bot-settings.miss-chance" -> defaults.getMissChance();
-            case "bot-settings.mistake-chance" -> defaults.getMistakeChance();
+case "bot-settings.mistake-chance" -> defaults.getMistakeChance();
             case "bot-settings.profile-lagg-fix" -> defaults.isProfileLagFix();
+            case "bot-settings.show-in-tab" -> defaults.isShowInTab();
             case "bot-settings.auto-armor" -> defaults.isAutoArmor();
             case "bot-settings.auto-weapon" -> defaults.isAutoWeapon();
             case "bot-settings.auto-eat" -> defaults.isAutoEat();
@@ -571,6 +573,7 @@ public class SettingsGUI implements Listener {
             case "bot-settings.miss-chance" -> defaults.setMissChance((Double) value);
             case "bot-settings.mistake-chance" -> defaults.setMistakeChance((Double) value);
             case "bot-settings.profile-lagg-fix" -> defaults.setProfileLagFix((Boolean) value);
+            case "bot-settings.show-in-tab" -> defaults.setShowInTab((Boolean) value);
             case "bot-settings.auto-armor" -> defaults.setAutoArmor((Boolean) value);
             case "bot-settings.auto-weapon" -> defaults.setAutoWeapon((Boolean) value);
             case "bot-settings.auto-eat" -> defaults.setAutoEat((Boolean) value);

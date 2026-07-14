@@ -41,7 +41,7 @@ public class PvPBotCommand implements TabExecutor {
             "shield-hold-ticks", "shield-raise-ticks", "shield-mace",
             "ranged", "mace", "ranged-min-range", "ranged-optimal-range",
             "ranged-max-range", "bow-draw-ticks", "arrow-prediction",
-            "ranged-strafe", "ranged-retreat"
+            "ranged-strafe", "ranged-retreat", "show-in-tab"
     );
 
     private static final List<String> BOOLEAN_KEYS = List.of(
@@ -51,7 +51,7 @@ public class PvPBotCommand implements TabExecutor {
             "shield-break", "shield-mace",
             "ranged", "mace", "arrow-prediction", "ranged-strafe", "ranged-retreat",
             "auto-armor", "auto-weapon", "auto-eat", "auto-potion", "auto-mend",
-            "auto-totem", "totem-priority"
+            "auto-totem", "totem-priority", "show-in-tab"
     );
 
     private static final List<String> KIT_SUBCOMMANDS = List.of(
@@ -261,6 +261,7 @@ public class PvPBotCommand implements TabExecutor {
             sender.sendMessage("§7  auto-mend: §f" + s.isAutoMend());
             sender.sendMessage("§7  auto-totem: §f" + s.isAutoTotem());
             sender.sendMessage("§7  totem-priority: §f" + s.isTotemPriority());
+            sender.sendMessage("§7  show-in-tab: §f" + s.isShowInTab());
             return;
         }
 
@@ -313,6 +314,7 @@ public class PvPBotCommand implements TabExecutor {
             case "auto-mend" -> setBool(sender, value, s::setAutoMend);
             case "auto-totem" -> setBool(sender, value, s::setAutoTotem);
             case "totem-priority" -> setBool(sender, value, s::setTotemPriority);
+            case "show-in-tab" -> setBool(sender, value, s::setShowInTab);
             default ->
                 sender.sendMessage("§cUnknown setting: " + setting + ". Available: " + String.join(", ", SETTING_KEYS));
         }

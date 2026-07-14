@@ -56,7 +56,7 @@ public class BotManager {
         }
 
         boolean profileLagFix = defaultSettings.isProfileLagFix();
-        CustomBot bot = CustomBot.spawn(location, finalName, owner.getUniqueId(), profileLagFix);
+        CustomBot bot = CustomBot.spawn(location, finalName, owner.getUniqueId(), profileLagFix, this);
 
         BotSettings botSettings = bot.getSettings();
         botSettings.setMoveSpeed(defaultSettings.getMoveSpeed());
@@ -102,6 +102,10 @@ public class BotManager {
         botSettings.setMissChance(defaultSettings.getMissChance());
         botSettings.setMistakeChance(defaultSettings.getMistakeChance());
         botSettings.setProfileLagFix(defaultSettings.isProfileLagFix());
+        botSettings.setBotLeaveOnDeath(defaultSettings.isBotLeaveOnDeath());
+        botSettings.setShowInTab(defaultSettings.isShowInTab());
+
+        bot.hideFromTabList();
 
         bots.put(bot.getUUID(), bot);
         nameIndex.put(bot.getBotName().toLowerCase(), bot.getUUID());

@@ -27,6 +27,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.Item;
@@ -66,11 +67,14 @@ public class CustomBot extends ServerPlayer {
     private final BotMovementController movementController;
     private final MaceComboController maceComboController;
     private final SurvivalController survivalController;
+    private final BotManager botManager;
 
     private int attackCooldownTicks;
     private boolean awaitingCritJump;
     private int weaponCheckCooldown;
     private boolean deathNotified;
+    private double spawnX, spawnY, spawnZ;
+    private float spawnYaw, spawnPitch;
 
     public CustomBot(
             @NotNull MinecraftServer server,
@@ -78,13 +82,15 @@ public class CustomBot extends ServerPlayer {
             @NotNull GameProfile profile,
             @NotNull ClientInformation clientInfo,
             @NotNull UUID ownerUUID,
-            @NotNull String botName
+            @NotNull String botName,
+            @NotNull BotManager botManager
     ) {
         super(server, level, profile, clientInfo);
         this.ownerUUID = ownerUUID;
         this.botName = botName;
         this.serverInstance = server;
         this.botSettings = new BotSettings();
+        this.botManager = botManager;
         this.fakeConnection = new FakeConnection();
         this.movementController = new BotMovementController(this, botSettings);
         this.maceComboController = new MaceComboController(this, botSettings);
@@ -103,7 +109,7 @@ public class CustomBot extends ServerPlayer {
             @Nullable String name,
             @NotNull UUID ownerUUID
     ) {
-        return spawn(location, name, ownerUUID, false);
+        return spawn(location, name, ownerUUID, false, null);
     }
 
     @NotNull
@@ -111,7 +117,8 @@ public class CustomBot extends ServerPlayer {
             @NotNull Location location,
             @Nullable String name,
             @NotNull UUID ownerUUID,
-            boolean profileLagFix
+            boolean profileLagFix,
+            @NotNull BotManager botManager
     ) {
         MinecraftServer server = ((CraftServer) Bukkit.getServer()).getServer();
         ServerLevel level = ((CraftWorld) location.getWorld()).getHandle();
@@ -124,11 +131,16 @@ public class CustomBot extends ServerPlayer {
             profile.properties().put("textures", new Property("textures", STEVE_TEXTURE, ""));
         }
 
-        CustomBot bot = new CustomBot(server, level, profile, ClientInformation.createDefault(), ownerUUID, botName);
+        CustomBot bot = new CustomBot(server, level, profile, ClientInformation.createDefault(), ownerUUID, botName, botManager);
 
         bot.setPos(location.getX(), location.getY(), location.getZ());
         bot.setYRot(location.getYaw());
         bot.setXRot(location.getPitch());
+        bot.spawnX = location.getX();
+        bot.spawnY = location.getY();
+        bot.spawnZ = location.getZ();
+        bot.spawnYaw = location.getYaw();
+        bot.spawnPitch = location.getPitch();
 
         CommonListenerCookie cookie = CommonListenerCookie.createInitial(profile, false);
         server.getPlayerList().placeNewPlayer(bot.fakeConnection, bot, cookie);
@@ -178,6 +190,23 @@ public class CustomBot extends ServerPlayer {
         }
     }
 
+    public void hideFromTabList() {
+        if (botSettings.isShowInTab()) return;
+
+        org.bukkit.plugin.Plugin plugin = org.bukkit.Bukkit.getPluginManager().getPlugin("PvPBot");
+        if (plugin != null) {
+            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                ClientboundPlayerInfoUpdatePacket packet = new ClientboundPlayerInfoUpdatePacket(
+                        ClientboundPlayerInfoUpdatePacket.Action.UPDATE_LISTED, this
+                );
+                for (ServerPlayer onlinePlayer : serverInstance.getPlayerList().getPlayers()) {
+                    if (onlinePlayer.equals(this)) continue;
+                    onlinePlayer.connection.send(packet);
+                }
+            }, 40L);
+        }
+    }
+
     @Override
     public void tick() {
         try {
@@ -194,26 +223,108 @@ public class CustomBot extends ServerPlayer {
                     movementController.isRetreating(),
                     maceComboController.isActive()
             );
-            if (!deathNotified && !isAlive()) {
-                deathNotified = true;
-                com.pvpbot.stats.StatsDatabase.getInstance().recordBotDeath();
-                org.bukkit.plugin.Plugin plugin = org.bukkit.Bukkit.getPluginManager().getPlugin("PvPBot");
-                if (plugin != null) {
-                    org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        if (!isAlive()) {
-                            if (botSettings.isBotLeaveOnDeath()) {
-                                removeFromWorld();
-                            } else {
-                                setHealth(getMaxHealth());
-                                getBukkitEntity().setFireTicks(0);
-                                deathNotified = false;
-                            }
-                        }
-                    }, 20L);
-                }
-            }
             onBotTick();
         } catch (Exception ignored) {
+        }
+    }
+
+    @Override
+    public void die(DamageSource cause) {
+        if (deathNotified) return;
+        deathNotified = true;
+
+        com.pvpbot.stats.StatsDatabase.getInstance().recordBotDeath();
+
+        net.minecraft.world.entity.player.Inventory inv = getInventory();
+        ServerLevel level = (ServerLevel) this.level();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            net.minecraft.world.item.ItemStack stack = inv.getItem(i);
+            if (!stack.isEmpty()) {
+                spawnAtLocation(level, stack);
+            }
+        }
+        inv.clearContent();
+
+        this.level().broadcastEntityEvent(this, (byte) 3);
+
+        setPos(spawnX, -100, spawnZ);
+
+        org.bukkit.plugin.Plugin plugin = org.bukkit.Bukkit.getPluginManager().getPlugin("PvPBot");
+        if (plugin != null) {
+            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (botSettings.isBotLeaveOnDeath()) {
+                    removeFromWorld();
+                } else {
+                    String name = this.botName;
+                    UUID owner = this.ownerUUID;
+                    BotSettings settings = new BotSettings();
+                    settings.setMoveSpeed(botSettings.getMoveSpeed());
+                    settings.setBhop(botSettings.isBhop());
+                    settings.setIdle(botSettings.isIdle());
+                    settings.setIdleRadius(botSettings.getIdleRadius());
+                    settings.setRetreat(botSettings.isRetreat());
+                    settings.setRetreatHealth(botSettings.getRetreatHealth());
+                    settings.setViewDistance(botSettings.getViewDistance());
+                    settings.setAimSpeed(botSettings.getAimSpeed());
+                    settings.setCombat(botSettings.isCombat());
+                    settings.setAutoTarget(botSettings.isAutoTarget());
+                    settings.setTargetPlayers(botSettings.isTargetPlayers());
+                    settings.setTargetMobs(botSettings.isTargetMobs());
+                    settings.setTargetBots(botSettings.isTargetBots());
+                    settings.setRevenge(botSettings.isRevenge());
+                    settings.setCriticals(botSettings.isCriticals());
+                    settings.setAttackCooldown(botSettings.getAttackCooldown());
+                    settings.setMeleeRange(botSettings.getMeleeRange());
+                    settings.setPreferSword(botSettings.isPreferSword());
+                    settings.setAutoShield(botSettings.isAutoShield());
+                    settings.setShieldBreak(botSettings.isShieldBreak());
+                    settings.setShieldBreakChance(botSettings.getShieldBreakChance());
+                    settings.setShieldHoldTicks(botSettings.getShieldHoldTicks());
+                    settings.setShieldRaiseTicks(botSettings.getShieldRaiseTicks());
+                    settings.setShieldMace(botSettings.isShieldMace());
+                    settings.setRanged(botSettings.isRanged());
+                    settings.setMace(botSettings.isMace());
+                    settings.setRangedMinRange(botSettings.getRangedMinRange());
+                    settings.setRangedOptimalRange(botSettings.getRangedOptimalRange());
+                    settings.setRangedMaxRange(botSettings.getRangedMaxRange());
+                    settings.setBowDrawTicks(botSettings.getBowDrawTicks());
+                    settings.setArrowPrediction(botSettings.isArrowPrediction());
+                    settings.setRangedStrafe(botSettings.isRangedStrafe());
+                    settings.setRangedRetreat(botSettings.isRangedRetreat());
+                    settings.setAutoArmor(botSettings.isAutoArmor());
+                    settings.setAutoWeapon(botSettings.isAutoWeapon());
+                    settings.setAutoEat(botSettings.isAutoEat());
+                    settings.setAutoPotion(botSettings.isAutoPotion());
+                    settings.setAutoMend(botSettings.isAutoMend());
+                    settings.setAutoTotem(botSettings.isAutoTotem());
+                    settings.setTotemPriority(botSettings.isTotemPriority());
+                    settings.setMissChance(botSettings.getMissChance());
+                    settings.setMistakeChance(botSettings.getMistakeChance());
+                    settings.setProfileLagFix(botSettings.isProfileLagFix());
+                    settings.setBotLeaveOnDeath(botSettings.isBotLeaveOnDeath());
+                    settings.setShowInTab(botSettings.isShowInTab());
+
+                    double sx = spawnX, sy = spawnY, sz = spawnZ;
+                    float syaw = spawnYaw, spitch = spawnPitch;
+
+                    org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+                        com.pvpbot.bot.BotManager botManager = null;
+                        try {
+                            var pl = org.bukkit.Bukkit.getPluginManager().getPlugin("PvPBot");
+                            if (pl instanceof com.pvpbot.PvPBotPlugin pp) {
+                                botManager = pp.getBotManager();
+                            }
+                        } catch (Exception ignored) {}
+                        if (botManager != null) {
+                            botManager.removeBot(name);
+                            org.bukkit.Location loc = new org.bukkit.Location(
+                                    level.getWorld(), sx, sy, sz, syaw, spitch
+                            );
+                            botManager.spawnBot(loc, name, Bukkit.getPlayer(owner));
+                        }
+                    });
+                }
+            }, 20L);
         }
     }
 

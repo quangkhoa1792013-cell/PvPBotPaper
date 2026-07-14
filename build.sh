@@ -2,7 +2,7 @@
 
 # ═══════════════════════════════════════════════════════════
 #   PvPBot - Build Pipeline Script
-#   Pipeline: clean → scan → test → build
+#   Pipeline: clean → test/scan → build → cleanup
 # ═══════════════════════════════════════════════════════════
 
 # ── Metadata Configuration ─────────────────────────────────
@@ -68,13 +68,22 @@ echo "=========================================" >> "$REPORT_FILE"
 echo "Step 1: Clean -> OK" >> "$REPORT_FILE"
 
 # ═══════════════════════════════════════════════════════════
-#   STEP 2: STATIC SCAN
+#   STEP 2: TESTS & STATIC ANALYSIS
 # ═══════════════════════════════════════════════════════════
-step_header "[2/4] Static security & performance scan..."
+step_header "[2/4] Running unit tests & static analysis..."
 
+# 2a: Unit tests
+./gradlew test
+TEST_EXIT=$?
+echo "Step 2a: Test -> $([ $TEST_EXIT -eq 0 ] && echo 'OK' || echo 'FAILED')" >> "$REPORT_FILE"
+if [ $TEST_EXIT -ne 0 ]; then
+    abort "Unit tests failed!"
+fi
+echo -e "${GREEN}✓ All tests passed.${NC}"
+
+# 2b: Static security & performance scans
 WARN_COUNT=0
 
-# 2a: Sync HTTP calls
 echo -e "${YELLOW}→ Checking synchronous network calls...${NC}"
 SYNC_HTTP=$(grep -rn -e "HttpURLConnection" -e "HttpClient" "$SRC_DIR" 2>/dev/null || true)
 if [ -n "$SYNC_HTTP" ]; then
@@ -86,7 +95,6 @@ else
     echo -e "${GREEN}  ✓ No blocking network calls.${NC}"
 fi
 
-# 2b: Command permission check
 echo -e "${YELLOW}→ Checking command permission gates...${NC}"
 MISSING_PERMS=""
 while IFS= read -r line; do
@@ -108,7 +116,6 @@ else
     echo -e "${GREEN}  ✓ All commands have permission gates.${NC}"
 fi
 
-# 2c: Unsafe reflection
 echo -e "${YELLOW}→ Checking unsafe Java reflection...${NC}"
 UNSAFE_REFLECT=$(grep -rn -e "setAccessible(true)" -e "Class.forName" "$SRC_DIR" 2>/dev/null || true)
 if [ -n "$UNSAFE_REFLECT" ]; then
@@ -120,7 +127,6 @@ else
     echo -e "${GREEN}  ✓ No unsafe reflection.${NC}"
 fi
 
-# 2d: Thread.sleep
 echo -e "${YELLOW}→ Checking Thread.sleep usage...${NC}"
 THREAD_SLEEP=$(grep -rn "Thread\.sleep" "$SRC_DIR" 2>/dev/null || true)
 if [ -n "$THREAD_SLEEP" ]; then
@@ -133,35 +139,37 @@ else
 fi
 
 echo "Warnings: $WARN_COUNT" >> "$REPORT_FILE"
+echo "Step 2: Scan -> OK ($WARN_COUNT warnings)" >> "$REPORT_FILE"
 
 # ═══════════════════════════════════════════════════════════
-#   STEP 3: TEST
+#   STEP 3: BUILD
 # ═══════════════════════════════════════════════════════════
-step_header "[3/4] Running unit tests..."
-
-./gradlew test
-TEST_EXIT=$?
-echo "Step 3: Test -> $([ $TEST_EXIT -eq 0 ] && echo 'OK' || echo 'FAILED')" >> "$REPORT_FILE"
-if [ $TEST_EXIT -ne 0 ]; then
-    abort "Unit tests failed!"
-fi
-echo -e "${GREEN}✓ All tests passed.${NC}"
-
-# ═══════════════════════════════════════════════════════════
-#   STEP 4: BUILD
-# ═══════════════════════════════════════════════════════════
-step_header "[4/4] Compiling & reobfuscating production jar..."
+step_header "[3/4] Compiling & reobfuscating production jar..."
 
 ./gradlew build
 BUILD_EXIT=$?
-echo "Step 4: Build -> $([ $BUILD_EXIT -eq 0 ] && echo 'OK' || echo 'FAILED')" >> "$REPORT_FILE"
+echo "Step 3: Build -> $([ $BUILD_EXIT -eq 0 ] && echo 'OK' || echo 'FAILED')" >> "$REPORT_FILE"
 if [ $BUILD_EXIT -ne 0 ]; then
     abort "Build failed!"
 fi
-
 echo -e "${GREEN}✓ Build successful.${NC}"
 ls -lh build/libs/*.jar 2>/dev/null
 ls -lh build/libs/*.jar >> "$REPORT_FILE" 2>/dev/null
+
+# ═══════════════════════════════════════════════════════════
+#   STEP 4: CLEAN UP TEMPORARY BUILD ARTIFACTS
+# ═══════════════════════════════════════════════════════════
+step_header "[4/4] Cleaning up temporary build artifacts..."
+
+for dir in build/tmp build/classes build/generated build/reports build/generated-sources; do
+    if [ -d "$dir" ]; then
+        rm -rf "$dir"
+        echo -e "  ${GREEN}✓ Removed${NC} $dir"
+    fi
+done
+
+echo "Step 4: Cleanup -> OK" >> "$REPORT_FILE"
+echo -e "${GREEN}✓ Temporary artifacts cleaned.${NC}"
 
 # ═══════════════════════════════════════════════════════════
 #   SUMMARY
