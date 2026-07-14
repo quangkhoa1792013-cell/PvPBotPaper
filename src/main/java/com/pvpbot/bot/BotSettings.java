@@ -51,6 +51,7 @@ public class BotSettings {
     private boolean autoTotem;
     private boolean totemPriority;
 
+    private boolean botLeaveOnDeath;
     private double missChance;
     private double mistakeChance;
     private boolean profileLagFix;
@@ -110,6 +111,7 @@ public class BotSettings {
         this.autoTotem = false;
         this.totemPriority = false;
 
+        this.botLeaveOnDeath = false;
         this.missChance = 0;
         this.mistakeChance = 0;
         this.profileLagFix = false;
@@ -165,6 +167,7 @@ public class BotSettings {
         this.missChance = Math.max(0, Math.min(100, config.getDouble("bot-settings.miss-chance", 0)));
         this.mistakeChance = Math.max(0, Math.min(100, config.getDouble("bot-settings.mistake-chance", 0)));
         this.profileLagFix = config.getBoolean("bot-settings.profile-lagg-fix", false);
+        this.botLeaveOnDeath = config.getBoolean("bot-settings.bot-leave-on-death", false);
     }
 
     public double getMoveSpeed() { return moveSpeed; }
@@ -301,4 +304,7 @@ public class BotSettings {
 
     public boolean isProfileLagFix() { return profileLagFix; }
     public void setProfileLagFix(boolean profileLagFix) { this.profileLagFix = profileLagFix; }
+
+    public boolean isBotLeaveOnDeath() { return botLeaveOnDeath; }
+    public void setBotLeaveOnDeath(boolean botLeaveOnDeath) { this.botLeaveOnDeath = botLeaveOnDeath; }
 }

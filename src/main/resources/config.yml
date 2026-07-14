@@ -70,3 +70,6 @@ bot-settings:
   miss-chance: 0
   mistake-chance: 0
   profile-lagg-fix: false
+
+  # Death / Respawn
+  bot-leave-on-death: false

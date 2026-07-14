@@ -197,6 +197,20 @@ public class CustomBot extends ServerPlayer {
             if (!deathNotified && !isAlive()) {
                 deathNotified = true;
                 com.pvpbot.stats.StatsDatabase.getInstance().recordBotDeath();
+                org.bukkit.plugin.Plugin plugin = org.bukkit.Bukkit.getPluginManager().getPlugin("PvPBot");
+                if (plugin != null) {
+                    org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        if (!isAlive()) {
+                            if (botSettings.isBotLeaveOnDeath()) {
+                                removeFromWorld();
+                            } else {
+                                setHealth(getMaxHealth());
+                                getBukkitEntity().setFireTicks(0);
+                                deathNotified = false;
+                            }
+                        }
+                    }, 20L);
+                }
             }
             onBotTick();
         } catch (Exception ignored) {

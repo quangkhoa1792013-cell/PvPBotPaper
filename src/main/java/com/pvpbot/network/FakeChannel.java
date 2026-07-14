@@ -2,8 +2,11 @@ package com.pvpbot.network;
 
 import io.netty.channel.AbstractChannel;
 import io.netty.channel.ChannelConfig;
+import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelMetadata;
 import io.netty.channel.ChannelOutboundBuffer;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.DefaultChannelConfig;
@@ -31,6 +34,12 @@ public class FakeChannel extends AbstractChannel {
         this.pipeline = new FakeChannelPipeline(this);
         this.remoteAddress = remoteAddress != null ? remoteAddress : DUMMY_ADDRESS;
         this.active = true;
+
+        pipeline.addLast("splitter", new ChannelInboundHandlerAdapter());
+        pipeline.addLast("decoder", new ChannelInboundHandlerAdapter());
+        pipeline.addLast("prepender", new ChannelOutboundHandlerAdapter());
+        pipeline.addLast("encoder", new ChannelOutboundHandlerAdapter());
+        pipeline.addLast("packet_handler", new ChannelDuplexHandler());
     }
 
     @Override
