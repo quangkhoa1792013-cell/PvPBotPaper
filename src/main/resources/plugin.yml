@@ -1,20 +1,16 @@
 name: PvPBot
-version: "${version}"
+version: ${version}
 main: com.pvpbot.PvPBotPlugin
-api-version: "1.21.11"
-description: Advanced PvP bot system with NMS fake players for Paper 1.21.11
-
+api-version: '1.21'
+depend:
+  - ProtocolLib
+  - Citizens
 commands:
   pvpbot:
-    description: "Control PvP bots"
-    usage: "/pvpbot <spawn|remove|removeall|reload> [name]"
-    aliases: ["bot"]
-    permission: pvpbot.use
-
+    description: Main PvPBot command
+    usage: /<command> <spawn|remove|removeall> [name]
+    permission: pvpbot.admin
 permissions:
-  pvpbot.use:
-    description: "Allows using basic pvpbot commands"
-    default: true
   pvpbot.admin:
-    description: "Allows using admin pvpbot commands (removeall, reload)"
+    description: Allows use of /pvpbot commands
     default: op

@@ -1,316 +1,240 @@
 package com.pvpbot.bot;
 
 import org.bukkit.configuration.file.FileConfiguration;
-import org.jetbrains.annotations.NotNull;
 
 public class BotSettings {
 
-    private double moveSpeed;
-    private boolean bhop;
-    private boolean idle;
-    private int idleRadius;
-    private boolean retreat;
-    private double retreatHealth;
-    private double viewDistance;
-    private double aimSpeed;
-    private boolean combatStrafe;
-    private int combatStrafeInterval;
+    private double moveSpeed = 0.25;
+    private boolean bhop = false;
+    private boolean idle = false;
+    private int idleRadius = 15;
+    private boolean combat = true;
+    private boolean revenge = true;
+    private boolean autoTarget = true;
+    private boolean criticals = true;
+    private boolean targetPlayers = true;
+    private boolean targetMobs = false;
+    private boolean targetBots = true;
+    private int attackCooldown = 12;
+    private double meleeRange = 3.0;
+    private boolean preferSword = true;
+    private boolean ranged = true;
+    private boolean mace = true;
+    private double rangedMinRange = 3.0;
+    private double rangedOptimalRange = 10.0;
+    private double rangedMaxRange = 20.0;
+    private int bowDrawTicks = 20;
+    private boolean arrowPrediction = true;
+    private boolean rangedStrafe = true;
+    private boolean rangedRetreat = true;
+    private boolean autoShield = true;
+    private boolean shieldBreak = true;
+    private int shieldBreakChance = 30;
+    private int shieldHoldTicks = 60;
+    private int shieldRaiseTicks = 5;
+    private boolean shieldMace = true;
+    private boolean autoArmor = true;
+    private boolean autoWeapon = true;
+    private boolean autoEat = true;
+    private boolean autoPotion = true;
+    private boolean autoMend = true;
+    private boolean autoTotem = true;
+    private boolean totemPriority = false;
+    private int missChance = 5;
+    private int mistakeChance = 5;
+    private double aimSpeed = 15.0;
+    private boolean showInTab = true;
+    private boolean botLeaveOnDeath = false;
 
-    private boolean combat;
-    private boolean autoTarget;
-    private boolean targetPlayers;
-    private boolean targetMobs;
-    private boolean targetBots;
-    private boolean revenge;
-    private boolean criticals;
-    private int attackCooldown;
-    private double meleeRange;
-    private boolean preferSword;
-    private boolean autoShield;
-    private boolean shieldBreak;
-    private double shieldBreakChance;
-    private int shieldHoldTicks;
-    private int shieldRaiseTicks;
-    private boolean shieldMace;
+    private final Object lock = new Object();
 
-    private boolean ranged;
-    private boolean mace;
-    private double rangedMinRange;
-    private double rangedOptimalRange;
-    private double rangedMaxRange;
-    private int bowDrawTicks;
-    private boolean arrowPrediction;
-    private boolean rangedStrafe;
-    private boolean rangedRetreat;
-
-    private boolean autoArmor;
-    private boolean autoWeapon;
-    private boolean autoEat;
-    private boolean autoPotion;
-    private boolean autoMend;
-    private boolean autoTotem;
-    private boolean totemPriority;
-
-private boolean botLeaveOnDeath;
-    private boolean showInTab;
-    private double missChance;
-    private double mistakeChance;
-    private boolean profileLagFix;
-
-    public BotSettings() {
-        setDefaults();
+    public void loadFromConfig(FileConfiguration config) {
+        String p = "bot-settings.";
+        synchronized (lock) {
+            moveSpeed = clamp(config.getDouble(p + "move-speed", 0.25), 0.0, 10.0);
+            bhop = config.getBoolean(p + "bhop", false);
+            idle = config.getBoolean(p + "idle", false);
+            idleRadius = clamp(config.getInt(p + "idle-radius", 15), 0, 100);
+            combat = config.getBoolean(p + "combat", true);
+            revenge = config.getBoolean(p + "revenge", true);
+            autoTarget = config.getBoolean(p + "auto-target", true);
+            criticals = config.getBoolean(p + "criticals", true);
+            targetPlayers = config.getBoolean(p + "target-players", true);
+            targetMobs = config.getBoolean(p + "target-mobs", false);
+            targetBots = config.getBoolean(p + "target-bots", true);
+            attackCooldown = clamp(config.getInt(p + "attack-cooldown", 12), 0, 40);
+            meleeRange = clamp(config.getDouble(p + "melee-range", 3.0), 1.0, 8.0);
+            preferSword = config.getBoolean(p + "prefer-sword", true);
+            ranged = config.getBoolean(p + "ranged", true);
+            mace = config.getBoolean(p + "mace", true);
+            rangedMinRange = clamp(config.getDouble(p + "ranged-min-range", 3.0), 1.0, 50.0);
+            rangedOptimalRange = clamp(config.getDouble(p + "ranged-optimal-range", 10.0), 1.0, 50.0);
+            rangedMaxRange = clamp(config.getDouble(p + "ranged-max-range", 20.0), 1.0, 50.0);
+            bowDrawTicks = clamp(config.getInt(p + "bow-draw-ticks", 20), 0, 100);
+            arrowPrediction = config.getBoolean(p + "arrow-prediction", true);
+            rangedStrafe = config.getBoolean(p + "ranged-strafe", true);
+            rangedRetreat = config.getBoolean(p + "ranged-retreat", true);
+            autoShield = config.getBoolean(p + "auto-shield", true);
+            shieldBreak = config.getBoolean(p + "shield-break", true);
+            shieldBreakChance = clamp(config.getInt(p + "shield-break-chance", 30), 0, 100);
+            shieldHoldTicks = clamp(config.getInt(p + "shield-hold-ticks", 60), 1, 200);
+            shieldRaiseTicks = clamp(config.getInt(p + "shield-raise-ticks", 5), 1, 40);
+            shieldMace = config.getBoolean(p + "shield-mace", true);
+            autoArmor = config.getBoolean(p + "auto-armor", true);
+            autoWeapon = config.getBoolean(p + "auto-weapon", true);
+            autoEat = config.getBoolean(p + "auto-eat", true);
+            autoPotion = config.getBoolean(p + "auto-potion", true);
+            autoMend = config.getBoolean(p + "auto-mend", true);
+            autoTotem = config.getBoolean(p + "auto-totem", true);
+            totemPriority = config.getBoolean(p + "totem-priority", false);
+            missChance = clamp(config.getInt(p + "miss-chance", 5), 0, 100);
+            mistakeChance = clamp(config.getInt(p + "mistake-chance", 5), 0, 100);
+            aimSpeed = clamp(config.getDouble(p + "aim-speed", 15.0), 0.0, 100.0);
+            showInTab = config.getBoolean(p + "show-in-tab", true);
+            botLeaveOnDeath = config.getBoolean(p + "bot-leave-on-death", false);
+        }
     }
 
-    public BotSettings(@NotNull FileConfiguration config) {
-        loadFromConfig(config);
+    public void saveToConfig(FileConfiguration config) {
+        String p = "bot-settings.";
+        synchronized (lock) {
+            config.set(p + "move-speed", moveSpeed);
+            config.set(p + "bhop", bhop);
+            config.set(p + "idle", idle);
+            config.set(p + "idle-radius", idleRadius);
+            config.set(p + "combat", combat);
+            config.set(p + "revenge", revenge);
+            config.set(p + "auto-target", autoTarget);
+            config.set(p + "criticals", criticals);
+            config.set(p + "target-players", targetPlayers);
+            config.set(p + "target-mobs", targetMobs);
+            config.set(p + "target-bots", targetBots);
+            config.set(p + "attack-cooldown", attackCooldown);
+            config.set(p + "melee-range", meleeRange);
+            config.set(p + "prefer-sword", preferSword);
+            config.set(p + "ranged", ranged);
+            config.set(p + "mace", mace);
+            config.set(p + "ranged-min-range", rangedMinRange);
+            config.set(p + "ranged-optimal-range", rangedOptimalRange);
+            config.set(p + "ranged-max-range", rangedMaxRange);
+            config.set(p + "bow-draw-ticks", bowDrawTicks);
+            config.set(p + "arrow-prediction", arrowPrediction);
+            config.set(p + "ranged-strafe", rangedStrafe);
+            config.set(p + "ranged-retreat", rangedRetreat);
+            config.set(p + "auto-shield", autoShield);
+            config.set(p + "shield-break", shieldBreak);
+            config.set(p + "shield-break-chance", shieldBreakChance);
+            config.set(p + "shield-hold-ticks", shieldHoldTicks);
+            config.set(p + "shield-raise-ticks", shieldRaiseTicks);
+            config.set(p + "shield-mace", shieldMace);
+            config.set(p + "auto-armor", autoArmor);
+            config.set(p + "auto-weapon", autoWeapon);
+            config.set(p + "auto-eat", autoEat);
+            config.set(p + "auto-potion", autoPotion);
+            config.set(p + "auto-mend", autoMend);
+            config.set(p + "auto-totem", autoTotem);
+            config.set(p + "totem-priority", totemPriority);
+            config.set(p + "miss-chance", missChance);
+            config.set(p + "mistake-chance", mistakeChance);
+            config.set(p + "aim-speed", aimSpeed);
+            config.set(p + "show-in-tab", showInTab);
+            config.set(p + "bot-leave-on-death", botLeaveOnDeath);
+        }
     }
 
-    public void setDefaults() {
-        this.moveSpeed = 0.25;
-        this.bhop = false;
-        this.idle = false;
-        this.idleRadius = 10;
-        this.retreat = false;
-        this.retreatHealth = 0.3;
-        this.viewDistance = 32.0;
-        this.aimSpeed = 0.15;
-        this.combatStrafe = true;
-        this.combatStrafeInterval = 20;
-
-        this.combat = false;
-        this.autoTarget = false;
-        this.targetPlayers = true;
-        this.targetMobs = false;
-        this.targetBots = false;
-        this.revenge = false;
-        this.criticals = false;
-        this.attackCooldown = 10;
-        this.meleeRange = 3.0;
-        this.preferSword = true;
-        this.autoShield = false;
-        this.shieldBreak = false;
-        this.shieldBreakChance = 30.0;
-        this.shieldHoldTicks = 40;
-        this.shieldRaiseTicks = 5;
-        this.shieldMace = false;
-
-        this.ranged = false;
-        this.mace = false;
-        this.rangedMinRange = 5.0;
-        this.rangedOptimalRange = 20.0;
-        this.rangedMaxRange = 50.0;
-        this.bowDrawTicks = 20;
-        this.arrowPrediction = true;
-        this.rangedStrafe = true;
-        this.rangedRetreat = true;
-
-        this.autoArmor = false;
-        this.autoWeapon = false;
-        this.autoEat = false;
-        this.autoPotion = false;
-        this.autoMend = false;
-        this.autoTotem = false;
-        this.totemPriority = false;
-
-        this.botLeaveOnDeath = false;
-        this.showInTab = true;
-        this.missChance = 0;
-        this.mistakeChance = 0;
-        this.profileLagFix = false;
+    private double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
     }
 
-    public void loadFromConfig(@NotNull FileConfiguration config) {
-        this.moveSpeed = Math.max(0.1, Math.min(2.0, config.getDouble("bot-settings.move-speed", 0.25)));
-        this.bhop = config.getBoolean("bot-settings.bhop", false);
-        this.idle = config.getBoolean("bot-settings.idle", false);
-        this.idleRadius = Math.max(3, Math.min(50, config.getInt("bot-settings.idle-radius", 10)));
-        this.retreat = config.getBoolean("bot-settings.retreat", false);
-        this.retreatHealth = Math.max(0.0, Math.min(1.0, config.getDouble("bot-settings.retreat-health", 0.3)));
-        this.viewDistance = Math.max(5, Math.min(128, config.getDouble("bot-settings.view-distance", 32.0)));
-        this.aimSpeed = Math.max(0.01, Math.min(1.0, config.getDouble("bot-settings.aim-speed", 0.15)));
-        this.combatStrafe = config.getBoolean("bot-settings.combat-strafe", true);
-        this.combatStrafeInterval = Math.max(5, Math.min(100, config.getInt("bot-settings.combat-strafe-interval", 20)));
-
-        this.combat = config.getBoolean("bot-settings.combat", false);
-        this.autoTarget = config.getBoolean("bot-settings.auto-target", false);
-        this.targetPlayers = config.getBoolean("bot-settings.target-players", true);
-        this.targetMobs = config.getBoolean("bot-settings.target-mobs", false);
-        this.targetBots = config.getBoolean("bot-settings.target-bots", false);
-        this.revenge = config.getBoolean("bot-settings.revenge", false);
-        this.criticals = config.getBoolean("bot-settings.criticals", false);
-        this.attackCooldown = Math.max(2, Math.min(60, config.getInt("bot-settings.attack-cooldown", 10)));
-        this.meleeRange = Math.max(2.0, Math.min(6.0, config.getDouble("bot-settings.melee-range", 3.0)));
-        this.preferSword = config.getBoolean("bot-settings.prefer-sword", true);
-        this.autoShield = config.getBoolean("bot-settings.auto-shield", false);
-        this.shieldBreak = config.getBoolean("bot-settings.shield-break", false);
-        this.shieldBreakChance = Math.max(0, Math.min(100, config.getDouble("bot-settings.shield-break-chance", 30.0)));
-        this.shieldHoldTicks = Math.max(10, Math.min(200, config.getInt("bot-settings.shield-hold-ticks", 40)));
-        this.shieldRaiseTicks = Math.max(0, Math.min(40, config.getInt("bot-settings.shield-raise-ticks", 5)));
-        this.shieldMace = config.getBoolean("bot-settings.shield-mace", false);
-
-        this.ranged = config.getBoolean("bot-settings.ranged", false);
-        this.mace = config.getBoolean("bot-settings.mace", false);
-        this.rangedMinRange = Math.max(3.0, Math.min(20.0, config.getDouble("bot-settings.ranged-min-range", 5.0)));
-        this.rangedOptimalRange = Math.max(10.0, Math.min(50.0, config.getDouble("bot-settings.ranged-optimal-range", 20.0)));
-        this.rangedMaxRange = Math.max(15.0, Math.min(100.0, config.getDouble("bot-settings.ranged-max-range", 50.0)));
-        this.bowDrawTicks = Math.max(5, Math.min(100, config.getInt("bot-settings.bow-draw-ticks", 20)));
-        this.arrowPrediction = config.getBoolean("bot-settings.arrow-prediction", true);
-        this.rangedStrafe = config.getBoolean("bot-settings.ranged-strafe", true);
-        this.rangedRetreat = config.getBoolean("bot-settings.ranged-retreat", true);
-
-        this.autoArmor = config.getBoolean("bot-settings.auto-armor", false);
-        this.autoWeapon = config.getBoolean("bot-settings.auto-weapon", false);
-        this.autoEat = config.getBoolean("bot-settings.auto-eat", false);
-        this.autoPotion = config.getBoolean("bot-settings.auto-potion", false);
-        this.autoMend = config.getBoolean("bot-settings.auto-mend", false);
-        this.autoTotem = config.getBoolean("bot-settings.auto-totem", false);
-        this.totemPriority = config.getBoolean("bot-settings.totem-priority", false);
-
-        this.missChance = Math.max(0, Math.min(100, config.getDouble("bot-settings.miss-chance", 0)));
-        this.mistakeChance = Math.max(0, Math.min(100, config.getDouble("bot-settings.mistake-chance", 0)));
-        this.profileLagFix = config.getBoolean("bot-settings.profile-lagg-fix", false);
-        this.botLeaveOnDeath = config.getBoolean("bot-settings.bot-leave-on-death", false);
-        this.showInTab = config.getBoolean("bot-settings.show-in-tab", true);
+    private int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
-    public double getMoveSpeed() { return moveSpeed; }
-    public void setMoveSpeed(double moveSpeed) { this.moveSpeed = Math.max(0.1, Math.min(2.0, moveSpeed)); }
+    // Thread-safe getters
 
-    public boolean isBhop() { return bhop; }
-    public void setBhop(boolean bhop) { this.bhop = bhop; }
+    public double getMoveSpeed() { synchronized (lock) { return moveSpeed; } }
+    public boolean isBhop() { synchronized (lock) { return bhop; } }
+    public boolean isIdle() { synchronized (lock) { return idle; } }
+    public int getIdleRadius() { synchronized (lock) { return idleRadius; } }
+    public boolean isCombat() { synchronized (lock) { return combat; } }
+    public boolean isRevenge() { synchronized (lock) { return revenge; } }
+    public boolean isAutoTarget() { synchronized (lock) { return autoTarget; } }
+    public boolean isCriticals() { synchronized (lock) { return criticals; } }
+    public boolean isTargetPlayers() { synchronized (lock) { return targetPlayers; } }
+    public boolean isTargetMobs() { synchronized (lock) { return targetMobs; } }
+    public boolean isTargetBots() { synchronized (lock) { return targetBots; } }
+    public int getAttackCooldown() { synchronized (lock) { return attackCooldown; } }
+    public double getMeleeRange() { synchronized (lock) { return meleeRange; } }
+    public boolean isPreferSword() { synchronized (lock) { return preferSword; } }
+    public boolean isRanged() { synchronized (lock) { return ranged; } }
+    public boolean isMace() { synchronized (lock) { return mace; } }
+    public double getRangedMinRange() { synchronized (lock) { return rangedMinRange; } }
+    public double getRangedOptimalRange() { synchronized (lock) { return rangedOptimalRange; } }
+    public double getRangedMaxRange() { synchronized (lock) { return rangedMaxRange; } }
+    public int getBowDrawTicks() { synchronized (lock) { return bowDrawTicks; } }
+    public boolean isArrowPrediction() { synchronized (lock) { return arrowPrediction; } }
+    public boolean isRangedStrafe() { synchronized (lock) { return rangedStrafe; } }
+    public boolean isRangedRetreat() { synchronized (lock) { return rangedRetreat; } }
+    public boolean isAutoShield() { synchronized (lock) { return autoShield; } }
+    public boolean isShieldBreak() { synchronized (lock) { return shieldBreak; } }
+    public int getShieldBreakChance() { synchronized (lock) { return shieldBreakChance; } }
+    public int getShieldHoldTicks() { synchronized (lock) { return shieldHoldTicks; } }
+    public int getShieldRaiseTicks() { synchronized (lock) { return shieldRaiseTicks; } }
+    public boolean isShieldMace() { synchronized (lock) { return shieldMace; } }
+    public boolean isAutoArmor() { synchronized (lock) { return autoArmor; } }
+    public boolean isAutoWeapon() { synchronized (lock) { return autoWeapon; } }
+    public boolean isAutoEat() { synchronized (lock) { return autoEat; } }
+    public boolean isAutoPotion() { synchronized (lock) { return autoPotion; } }
+    public boolean isAutoMend() { synchronized (lock) { return autoMend; } }
+    public boolean isAutoTotem() { synchronized (lock) { return autoTotem; } }
+    public boolean isTotemPriority() { synchronized (lock) { return totemPriority; } }
+    public int getMissChance() { synchronized (lock) { return missChance; } }
+    public int getMistakeChance() { synchronized (lock) { return mistakeChance; } }
+    public double getAimSpeed() { synchronized (lock) { return aimSpeed; } }
+    public boolean isShowInTab() { synchronized (lock) { return showInTab; } }
+    public boolean isBotLeaveOnDeath() { synchronized (lock) { return botLeaveOnDeath; } }
 
-    public boolean isIdle() { return idle; }
-    public void setIdle(boolean idle) { this.idle = idle; }
+    // Thread-safe setters with clamping
 
-    public int getIdleRadius() { return idleRadius; }
-    public void setIdleRadius(int idleRadius) { this.idleRadius = Math.max(3, Math.min(50, idleRadius)); }
-
-    public boolean isRetreat() { return retreat; }
-    public void setRetreat(boolean retreat) { this.retreat = retreat; }
-
-    public double getRetreatHealth() { return retreatHealth; }
-    public void setRetreatHealth(double retreatHealth) { this.retreatHealth = Math.max(0.0, Math.min(1.0, retreatHealth)); }
-
-    public double getViewDistance() { return viewDistance; }
-    public void setViewDistance(double viewDistance) { this.viewDistance = Math.max(5, Math.min(128, viewDistance)); }
-
-    public double getAimSpeed() { return aimSpeed; }
-    public void setAimSpeed(double aimSpeed) { this.aimSpeed = Math.max(0.01, Math.min(1.0, aimSpeed)); }
-
-    public boolean isCombatStrafe() { return combatStrafe; }
-    public void setCombatStrafe(boolean combatStrafe) { this.combatStrafe = combatStrafe; }
-
-    public int getCombatStrafeInterval() { return combatStrafeInterval; }
-    public void setCombatStrafeInterval(int interval) { this.combatStrafeInterval = Math.max(5, Math.min(100, interval)); }
-
-    public boolean isCombat() { return combat; }
-    public void setCombat(boolean combat) { this.combat = combat; }
-
-    public boolean isAutoTarget() { return autoTarget; }
-    public void setAutoTarget(boolean autoTarget) { this.autoTarget = autoTarget; }
-
-    public boolean isTargetPlayers() { return targetPlayers; }
-    public void setTargetPlayers(boolean targetPlayers) { this.targetPlayers = targetPlayers; }
-
-    public boolean isTargetMobs() { return targetMobs; }
-    public void setTargetMobs(boolean targetMobs) { this.targetMobs = targetMobs; }
-
-    public boolean isTargetBots() { return targetBots; }
-    public void setTargetBots(boolean targetBots) { this.targetBots = targetBots; }
-
-    public boolean isRevenge() { return revenge; }
-    public void setRevenge(boolean revenge) { this.revenge = revenge; }
-
-    public boolean isCriticals() { return criticals; }
-    public void setCriticals(boolean criticals) { this.criticals = criticals; }
-
-    public int getAttackCooldown() { return attackCooldown; }
-    public void setAttackCooldown(int attackCooldown) { this.attackCooldown = Math.max(2, Math.min(60, attackCooldown)); }
-
-    public double getMeleeRange() { return meleeRange; }
-    public void setMeleeRange(double meleeRange) { this.meleeRange = Math.max(2.0, Math.min(6.0, meleeRange)); }
-
-    public boolean isPreferSword() { return preferSword; }
-    public void setPreferSword(boolean preferSword) { this.preferSword = preferSword; }
-
-    public boolean isAutoShield() { return autoShield; }
-    public void setAutoShield(boolean autoShield) { this.autoShield = autoShield; }
-
-    public boolean isShieldBreak() { return shieldBreak; }
-    public void setShieldBreak(boolean shieldBreak) { this.shieldBreak = shieldBreak; }
-
-    public double getShieldBreakChance() { return shieldBreakChance; }
-    public void setShieldBreakChance(double shieldBreakChance) { this.shieldBreakChance = Math.max(0, Math.min(100, shieldBreakChance)); }
-
-    public int getShieldHoldTicks() { return shieldHoldTicks; }
-    public void setShieldHoldTicks(int shieldHoldTicks) { this.shieldHoldTicks = Math.max(10, Math.min(200, shieldHoldTicks)); }
-
-    public int getShieldRaiseTicks() { return shieldRaiseTicks; }
-    public void setShieldRaiseTicks(int shieldRaiseTicks) { this.shieldRaiseTicks = Math.max(0, Math.min(40, shieldRaiseTicks)); }
-
-    public boolean isShieldMace() { return shieldMace; }
-    public void setShieldMace(boolean shieldMace) { this.shieldMace = shieldMace; }
-
-    public boolean isRanged() { return ranged; }
-    public void setRanged(boolean ranged) { this.ranged = ranged; }
-
-    public boolean isMace() { return mace; }
-    public void setMace(boolean mace) { this.mace = mace; }
-
-    public double getRangedMinRange() { return rangedMinRange; }
-    public void setRangedMinRange(double rangedMinRange) { this.rangedMinRange = Math.max(3.0, Math.min(20.0, rangedMinRange)); }
-
-    public double getRangedOptimalRange() { return rangedOptimalRange; }
-    public void setRangedOptimalRange(double rangedOptimalRange) { this.rangedOptimalRange = Math.max(10.0, Math.min(50.0, rangedOptimalRange)); }
-
-    public double getRangedMaxRange() { return rangedMaxRange; }
-    public void setRangedMaxRange(double rangedMaxRange) { this.rangedMaxRange = Math.max(15.0, Math.min(100.0, rangedMaxRange)); }
-
-    public int getBowDrawTicks() { return bowDrawTicks; }
-    public void setBowDrawTicks(int bowDrawTicks) { this.bowDrawTicks = Math.max(5, Math.min(100, bowDrawTicks)); }
-
-    public boolean isArrowPrediction() { return arrowPrediction; }
-    public void setArrowPrediction(boolean arrowPrediction) { this.arrowPrediction = arrowPrediction; }
-
-    public boolean isRangedStrafe() { return rangedStrafe; }
-    public void setRangedStrafe(boolean rangedStrafe) { this.rangedStrafe = rangedStrafe; }
-
-    public boolean isRangedRetreat() { return rangedRetreat; }
-    public void setRangedRetreat(boolean rangedRetreat) { this.rangedRetreat = rangedRetreat; }
-
-    public boolean isAutoArmor() { return autoArmor; }
-    public void setAutoArmor(boolean autoArmor) { this.autoArmor = autoArmor; }
-
-    public boolean isAutoWeapon() { return autoWeapon; }
-    public void setAutoWeapon(boolean autoWeapon) { this.autoWeapon = autoWeapon; }
-
-    public boolean isAutoEat() { return autoEat; }
-    public void setAutoEat(boolean autoEat) { this.autoEat = autoEat; }
-
-    public boolean isAutoPotion() { return autoPotion; }
-    public void setAutoPotion(boolean autoPotion) { this.autoPotion = autoPotion; }
-
-    public boolean isAutoMend() { return autoMend; }
-    public void setAutoMend(boolean autoMend) { this.autoMend = autoMend; }
-
-    public boolean isAutoTotem() { return autoTotem; }
-    public void setAutoTotem(boolean autoTotem) { this.autoTotem = autoTotem; }
-
-    public boolean isTotemPriority() { return totemPriority; }
-    public void setTotemPriority(boolean totemPriority) { this.totemPriority = totemPriority; }
-
-    public double getMissChance() { return missChance; }
-    public void setMissChance(double missChance) { this.missChance = Math.max(0, Math.min(100, missChance)); }
-
-    public double getMistakeChance() { return mistakeChance; }
-    public void setMistakeChance(double mistakeChance) { this.mistakeChance = Math.max(0, Math.min(100, mistakeChance)); }
-
-    public boolean isProfileLagFix() { return profileLagFix; }
-    public void setProfileLagFix(boolean profileLagFix) { this.profileLagFix = profileLagFix; }
-
-    public boolean isBotLeaveOnDeath() { return botLeaveOnDeath; }
-    public void setBotLeaveOnDeath(boolean botLeaveOnDeath) { this.botLeaveOnDeath = botLeaveOnDeath; }
-
-    public boolean isShowInTab() { return showInTab; }
-    public void setShowInTab(boolean showInTab) { this.showInTab = showInTab; }
+    public void setMoveSpeed(double value) { synchronized (lock) { this.moveSpeed = clamp(value, 0.0, 10.0); } }
+    public void setBhop(boolean value) { synchronized (lock) { this.bhop = value; } }
+    public void setIdle(boolean value) { synchronized (lock) { this.idle = value; } }
+    public void setIdleRadius(int value) { synchronized (lock) { this.idleRadius = clamp(value, 0, 100); } }
+    public void setCombat(boolean value) { synchronized (lock) { this.combat = value; } }
+    public void setRevenge(boolean value) { synchronized (lock) { this.revenge = value; } }
+    public void setAutoTarget(boolean value) { synchronized (lock) { this.autoTarget = value; } }
+    public void setCriticals(boolean value) { synchronized (lock) { this.criticals = value; } }
+    public void setTargetPlayers(boolean value) { synchronized (lock) { this.targetPlayers = value; } }
+    public void setTargetMobs(boolean value) { synchronized (lock) { this.targetMobs = value; } }
+    public void setTargetBots(boolean value) { synchronized (lock) { this.targetBots = value; } }
+    public void setAttackCooldown(int value) { synchronized (lock) { this.attackCooldown = clamp(value, 0, 40); } }
+    public void setMeleeRange(double value) { synchronized (lock) { this.meleeRange = clamp(value, 1.0, 8.0); } }
+    public void setPreferSword(boolean value) { synchronized (lock) { this.preferSword = value; } }
+    public void setRanged(boolean value) { synchronized (lock) { this.ranged = value; } }
+    public void setMace(boolean value) { synchronized (lock) { this.mace = value; } }
+    public void setRangedMinRange(double value) { synchronized (lock) { this.rangedMinRange = clamp(value, 1.0, 50.0); } }
+    public void setRangedOptimalRange(double value) { synchronized (lock) { this.rangedOptimalRange = clamp(value, 1.0, 50.0); } }
+    public void setRangedMaxRange(double value) { synchronized (lock) { this.rangedMaxRange = clamp(value, 1.0, 50.0); } }
+    public void setBowDrawTicks(int value) { synchronized (lock) { this.bowDrawTicks = clamp(value, 0, 100); } }
+    public void setArrowPrediction(boolean value) { synchronized (lock) { this.arrowPrediction = value; } }
+    public void setRangedStrafe(boolean value) { synchronized (lock) { this.rangedStrafe = value; } }
+    public void setRangedRetreat(boolean value) { synchronized (lock) { this.rangedRetreat = value; } }
+    public void setAutoShield(boolean value) { synchronized (lock) { this.autoShield = value; } }
+    public void setShieldBreak(boolean value) { synchronized (lock) { this.shieldBreak = value; } }
+    public void setShieldBreakChance(int value) { synchronized (lock) { this.shieldBreakChance = clamp(value, 0, 100); } }
+    public void setShieldHoldTicks(int value) { synchronized (lock) { this.shieldHoldTicks = clamp(value, 1, 200); } }
+    public void setShieldRaiseTicks(int value) { synchronized (lock) { this.shieldRaiseTicks = clamp(value, 1, 40); } }
+    public void setShieldMace(boolean value) { synchronized (lock) { this.shieldMace = value; } }
+    public void setAutoArmor(boolean value) { synchronized (lock) { this.autoArmor = value; } }
+    public void setAutoWeapon(boolean value) { synchronized (lock) { this.autoWeapon = value; } }
+    public void setAutoEat(boolean value) { synchronized (lock) { this.autoEat = value; } }
+    public void setAutoPotion(boolean value) { synchronized (lock) { this.autoPotion = value; } }
+    public void setAutoMend(boolean value) { synchronized (lock) { this.autoMend = value; } }
+    public void setAutoTotem(boolean value) { synchronized (lock) { this.autoTotem = value; } }
+    public void setTotemPriority(boolean value) { synchronized (lock) { this.totemPriority = value; } }
+    public void setMissChance(int value) { synchronized (lock) { this.missChance = clamp(value, 0, 100); } }
+    public void setMistakeChance(int value) { synchronized (lock) { this.mistakeChance = clamp(value, 0, 100); } }
+    public void setAimSpeed(double value) { synchronized (lock) { this.aimSpeed = clamp(value, 0.0, 100.0); } }
+    public void setShowInTab(boolean value) { synchronized (lock) { this.showInTab = value; } }
+    public void setBotLeaveOnDeath(boolean value) { synchronized (lock) { this.botLeaveOnDeath = value; } }
 }

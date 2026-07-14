@@ -8,7 +8,7 @@ version = project.version
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
@@ -18,14 +18,24 @@ repositories {
         name = "papermc"
         url = "https://repo.papermc.io/repository/maven-public/"
     }
+    maven {
+        name = "citizens"
+        url = "https://maven.citizensnpcs.co/repo/"
+    }
+    maven {
+        name = "protocolLib"
+        url = "https://repo.dmulloy2.net/repository/public/"
+    }
+    maven {
+        name = "alessioDP"
+        url = "https://repo.alessiodp.com/releases/"
+    }
 }
 
 dependencies {
     paperweight.paperDevBundle("1.21.11-R0.1-SNAPSHOT")
-    compileOnly "io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT"
-    compileOnly "com.velocitypowered:velocity-api:3.3.0-SNAPSHOT"
-    annotationProcessor "com.velocitypowered:velocity-api:3.3.0-SNAPSHOT"
-    implementation "org.xerial:sqlite-jdbc:3.45.1.0"
+    compileOnly "net.citizensnpcs:citizens-main:2.0.35-SNAPSHOT"
+    compileOnly "com.comphenix.protocol:ProtocolLib:5.4.0-SNAPSHOT"
 }
 
 tasks {

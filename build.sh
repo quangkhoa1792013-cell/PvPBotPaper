@@ -8,7 +8,7 @@
 # ── Metadata Configuration ─────────────────────────────────
 TARGET_SERVER="Paper 1.21.11"
 SUPPORTED_PLATFORMS="Paper, Purpur (1.21.x)"
-REQUIRED_JAVA="Java 21"
+REQUIRED_JAVA="Java 25"
 PROJECT_TYPE="Pure NMS PvP Bot Engine"
 SRC_DIR="src/main/java"
 REPORT_FILE="build/pipeline-report.txt"
@@ -22,7 +22,7 @@ CYAN='\033[1;36m'
 NC='\033[0m'
 
 # ── Environment ──────────────────────────────────────────
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
+export JAVA_HOME=/usr/lib/jvm/java-25-openjdk
 export PATH=$JAVA_HOME/bin:$PATH
 
 # ── Helpers ──────────────────────────────────────────────

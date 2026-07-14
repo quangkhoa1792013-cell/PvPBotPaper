@@ -1,76 +1,42 @@
-# PvPBot Configuration
-# Phase 4 - Full movement, combat, ranged, shield, & mace combo AI
-
-settings:
-  max-total-bots: 50
-  max-bots-per-player: 5
-  bot-prefix: "Bot"
-  keep-chunks-loaded: true
-  show-in-tab-list: true
-  auto-cleanup-on-shutdown: true
-
 bot-settings:
-  # Movement
   move-speed: 0.25
   bhop: false
   idle: false
-  idle-radius: 10
-  retreat: false
-  retreat-health: 0.3
-  view-distance: 32.0
-  aim-speed: 0.15
-  combat-strafe: true
-  combat-strafe-interval: 20
-
-  # Melee Combat
-  combat: false
-  revenge: false
-  criticals: false
-  attack-cooldown: 10
-  melee-range: 3.0
-  prefer-sword: true
-
-  # Targeting
-  auto-target: false
+  idle-radius: 15
+  combat: true
+  revenge: true
+  auto-target: true
+  criticals: true
   target-players: true
   target-mobs: false
-  target-bots: false
-
-  # Shield
-  auto-shield: false
-  shield-break: false
-  shield-break-chance: 30.0
-  shield-hold-ticks: 40
-  shield-raise-ticks: 5
-  shield-mace: false
-
-  # Ranged Combat
-  ranged: false
-  ranged-min-range: 5.0
-  ranged-optimal-range: 20.0
-  ranged-max-range: 50.0
+  target-bots: true
+  attack-cooldown: 12
+  melee-range: 3.0
+  prefer-sword: true
+  ranged: true
+  mace: true
+  ranged-min-range: 3.0
+  ranged-optimal-range: 10.0
+  ranged-max-range: 20.0
   bow-draw-ticks: 20
   arrow-prediction: true
   ranged-strafe: true
   ranged-retreat: true
-
-  # Mace Wind-Charge Combo
-  mace: false
-
-  # Survival / Utilities
-  auto-armor: false
-  auto-weapon: false
-  auto-eat: false
-  auto-potion: false
-  auto-mend: false
-  auto-totem: false
+  auto-shield: true
+  shield-break: true
+  shield-break-chance: 30
+  shield-hold-ticks: 60
+  shield-raise-ticks: 5
+  shield-mace: true
+  auto-armor: true
+  auto-weapon: true
+  auto-eat: true
+  auto-potion: true
+  auto-mend: true
+  auto-totem: true
   totem-priority: false
-
-  # Realism / Difficulty
-  miss-chance: 0
-  mistake-chance: 0
-  profile-lagg-fix: false
-
-  # Death / Respawn
-  bot-leave-on-death: false
+  miss-chance: 5
+  mistake-chance: 5
+  aim-speed: 15.0
   show-in-tab: true
+  bot-leave-on-death: false
