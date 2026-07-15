@@ -68,6 +68,7 @@ public class PvPBotPlugin extends JavaPlugin {
 
     public static void broadcastDebug(String message) {
         if (instance == null) return;
+        if (!instance.getDefaultSettings().isDebug()) return;
         instance.getLogger().info("[DEBUG] " + message);
         for (Player player : instance.getServer().getOnlinePlayers()) {
             if (player.hasPermission("pvpbot.admin")) {

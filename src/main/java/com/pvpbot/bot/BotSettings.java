@@ -181,51 +181,73 @@ public class BotSettings {
 
     public void setValue(String key, Object value) {
         switch (key) {
-            case "move-speed": setMoveSpeed(((Number) value).doubleValue()); break;
-            case "bhop": setBhop((Boolean) value); break;
-            case "idle": setIdle((Boolean) value); break;
-            case "idle-radius": setIdleRadius(((Number) value).intValue()); break;
-            case "view-distance": setViewDistance(((Number) value).intValue()); break;
-            case "retreat": setRetreat((Boolean) value); break;
-            case "combat": setCombat((Boolean) value); break;
-            case "revenge": setRevenge((Boolean) value); break;
-            case "auto-target": setAutoTarget((Boolean) value); break;
-            case "criticals": setCriticals((Boolean) value); break;
-            case "target-players": setTargetPlayers((Boolean) value); break;
-            case "target-mobs": setTargetMobs((Boolean) value); break;
-            case "target-bots": setTargetBots((Boolean) value); break;
-            case "attack-cooldown": setAttackCooldown(((Number) value).intValue()); break;
-            case "melee-range": setMeleeRange(((Number) value).doubleValue()); break;
-            case "prefer-sword": setPreferSword((Boolean) value); break;
-            case "ranged": setRanged((Boolean) value); break;
-            case "mace": setMace((Boolean) value); break;
-            case "ranged-min-range": setRangedMinRange(((Number) value).doubleValue()); break;
-            case "ranged-optimal-range": setRangedOptimalRange(((Number) value).doubleValue()); break;
-            case "ranged-max-range": setRangedMaxRange(((Number) value).doubleValue()); break;
-            case "bow-draw-ticks": setBowDrawTicks(((Number) value).intValue()); break;
-            case "arrow-prediction": setArrowPrediction((Boolean) value); break;
-            case "ranged-strafe": setRangedStrafe((Boolean) value); break;
-            case "ranged-retreat": setRangedRetreat((Boolean) value); break;
-            case "auto-shield": setAutoShield((Boolean) value); break;
-            case "shield-break": setShieldBreak((Boolean) value); break;
-            case "shield-break-chance": setShieldBreakChance(((Number) value).intValue()); break;
-            case "shield-hold-ticks": setShieldHoldTicks(((Number) value).intValue()); break;
-            case "shield-raise-ticks": setShieldRaiseTicks(((Number) value).intValue()); break;
-            case "shield-mace": setShieldMace((Boolean) value); break;
-            case "auto-armor": setAutoArmor((Boolean) value); break;
-            case "auto-weapon": setAutoWeapon((Boolean) value); break;
-            case "auto-eat": setAutoEat((Boolean) value); break;
-            case "auto-potion": setAutoPotion((Boolean) value); break;
-            case "auto-mend": setAutoMend((Boolean) value); break;
-            case "auto-totem": setAutoTotem((Boolean) value); break;
-            case "totem-priority": setTotemPriority((Boolean) value); break;
-            case "miss-chance": setMissChance(((Number) value).intValue()); break;
-            case "mistake-chance": setMistakeChance(((Number) value).intValue()); break;
-            case "aim-speed": setAimSpeed(((Number) value).doubleValue()); break;
-            case "show-in-tab": setShowInTab((Boolean) value); break;
-            case "bot-leave-on-death": setBotLeaveOnDeath((Boolean) value); break;
-            case "debug": setDebug((Boolean) value); break;
+            case "move-speed": setMoveSpeed(asDouble(value, 0.25)); break;
+            case "bhop": setBhop(asBoolean(value, false)); break;
+            case "idle": setIdle(asBoolean(value, false)); break;
+            case "idle-radius": setIdleRadius(asInt(value, 15)); break;
+            case "view-distance": setViewDistance(asInt(value, 32)); break;
+            case "retreat": setRetreat(asBoolean(value, false)); break;
+            case "combat": setCombat(asBoolean(value, true)); break;
+            case "revenge": setRevenge(asBoolean(value, true)); break;
+            case "auto-target": setAutoTarget(asBoolean(value, true)); break;
+            case "criticals": setCriticals(asBoolean(value, true)); break;
+            case "target-players": setTargetPlayers(asBoolean(value, true)); break;
+            case "target-mobs": setTargetMobs(asBoolean(value, false)); break;
+            case "target-bots": setTargetBots(asBoolean(value, true)); break;
+            case "attack-cooldown": setAttackCooldown(asInt(value, 12)); break;
+            case "melee-range": setMeleeRange(asDouble(value, 3.0)); break;
+            case "prefer-sword": setPreferSword(asBoolean(value, true)); break;
+            case "ranged": setRanged(asBoolean(value, true)); break;
+            case "mace": setMace(asBoolean(value, true)); break;
+            case "ranged-min-range": setRangedMinRange(asDouble(value, 3.0)); break;
+            case "ranged-optimal-range": setRangedOptimalRange(asDouble(value, 10.0)); break;
+            case "ranged-max-range": setRangedMaxRange(asDouble(value, 20.0)); break;
+            case "bow-draw-ticks": setBowDrawTicks(asInt(value, 20)); break;
+            case "arrow-prediction": setArrowPrediction(asBoolean(value, true)); break;
+            case "ranged-strafe": setRangedStrafe(asBoolean(value, true)); break;
+            case "ranged-retreat": setRangedRetreat(asBoolean(value, true)); break;
+            case "auto-shield": setAutoShield(asBoolean(value, true)); break;
+            case "shield-break": setShieldBreak(asBoolean(value, true)); break;
+            case "shield-break-chance": setShieldBreakChance(asInt(value, 30)); break;
+            case "shield-hold-ticks": setShieldHoldTicks(asInt(value, 60)); break;
+            case "shield-raise-ticks": setShieldRaiseTicks(asInt(value, 5)); break;
+            case "shield-mace": setShieldMace(asBoolean(value, true)); break;
+            case "auto-armor": setAutoArmor(asBoolean(value, true)); break;
+            case "auto-weapon": setAutoWeapon(asBoolean(value, true)); break;
+            case "auto-eat": setAutoEat(asBoolean(value, true)); break;
+            case "auto-potion": setAutoPotion(asBoolean(value, true)); break;
+            case "auto-mend": setAutoMend(asBoolean(value, true)); break;
+            case "auto-totem": setAutoTotem(asBoolean(value, true)); break;
+            case "totem-priority": setTotemPriority(asBoolean(value, false)); break;
+            case "miss-chance": setMissChance(asInt(value, 5)); break;
+            case "mistake-chance": setMistakeChance(asInt(value, 5)); break;
+            case "aim-speed": setAimSpeed(asDouble(value, 15.0)); break;
+            case "show-in-tab": setShowInTab(asBoolean(value, true)); break;
+            case "bot-leave-on-death": setBotLeaveOnDeath(asBoolean(value, false)); break;
+            case "debug": setDebug(asBoolean(value, false)); break;
         }
+    }
+
+    private double asDouble(Object obj, double def) {
+        if (obj instanceof Number num) return num.doubleValue();
+        if (obj instanceof String str) {
+            try { return Double.parseDouble(str); } catch (NumberFormatException ignored) {}
+        }
+        return def;
+    }
+
+    private int asInt(Object obj, int def) {
+        if (obj instanceof Number num) return num.intValue();
+        if (obj instanceof String str) {
+            try { return Integer.parseInt(str); } catch (NumberFormatException ignored) {}
+        }
+        return def;
+    }
+
+    private boolean asBoolean(Object obj, boolean def) {
+        if (obj instanceof Boolean bool) return bool;
+        if (obj instanceof String str) return Boolean.parseBoolean(str);
+        return def;
     }
 
     public void loadFromConfig(FileConfiguration config) {

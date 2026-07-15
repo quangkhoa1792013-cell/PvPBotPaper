@@ -18,30 +18,30 @@ public class PvPBotTrait extends Trait {
 
     @Override
     public void onAttach() {
-        this.settings = new BotSettings();
-        this.settings.loadFromConfig(PvPBotPlugin.getInstance().getConfig());
+        // Settings injected externally by BotManager.spawnBot()
     }
 
     @Override
     public void run() {
         if (!npc.isSpawned()) return;
 
-        try {
-            Player player = (Player) npc.getEntity();
-            if (player == null) return;
+        if (npc.getEntity() instanceof Player player) {
+            if (player instanceof CraftPlayer craftPlayer) {
+                try {
+                    ServerPlayer nmsPlayer = craftPlayer.getHandle();
+                    tickCounter++;
 
-            ServerPlayer nmsPlayer = ((CraftPlayer) player).getHandle();
-            tickCounter++;
-
-            if (tickCounter % 100 == 0) {
-                PvPBotPlugin.getInstance().getLogger().info(
-                    "PvPBot Trait ticking for " + npc.getName()
-                );
+                    if (tickCounter % 100 == 0) {
+                        PvPBotPlugin.getInstance().getLogger().info(
+                            "PvPBot Trait ticking for " + npc.getName()
+                        );
+                    }
+                } catch (Exception e) {
+                    PvPBotPlugin.getInstance().getLogger().warning(
+                        "Error in PvPBotTrait tick: " + e.getMessage()
+                    );
+                }
             }
-        } catch (Exception e) {
-            PvPBotPlugin.getInstance().getLogger().warning(
-                "Error in PvPBotTrait tick: " + e.getMessage()
-            );
         }
     }
 

@@ -5,6 +5,7 @@ import com.pvpbot.npc.PvPBotTrait;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.npc.NPCRegistry;
+import net.citizensnpcs.api.trait.Trait;
 import org.bukkit.Location;
 import org.bukkit.entity.EntityType;
 import org.bukkit.plugin.Plugin;
@@ -32,20 +33,18 @@ public class BotManager {
 
         NPCRegistry registry = CitizensAPI.getNPCRegistry();
         NPC npc = registry.createNPC(EntityType.PLAYER, uniqueName);
-        npc.addTrait(PvPBotTrait.class);
 
-        PvPBotTrait trait = npc.getTraitNullable(PvPBotTrait.class);
-        if (trait != null) {
-            BotSettings defaults = new BotSettings();
-            defaults.loadFromConfig(plugin.getConfig());
-            trait.setSettings(defaults);
-            npc.data().set(NPC.Metadata.REMOVE_FROM_TABLIST, !defaults.isShowInTab());
-            npc.data().set(NPC.Metadata.NAMEPLATE_VISIBLE, defaults.isShowInTab());
-        }
+        PvPBotTrait trait = npc.getOrAddTrait(PvPBotTrait.class);
+        BotSettings settings = new BotSettings();
+        settings.loadFromConfig(plugin.getConfig());
+        boolean showInTab = settings.isShowInTab();
+        trait.setSettings(settings);
+        npc.data().set(NPC.Metadata.REMOVE_FROM_TABLIST, !showInTab);
+        npc.data().set(NPC.Metadata.NAMEPLATE_VISIBLE, showInTab);
 
         npc.spawn(loc);
 
-        if (trait != null && !trait.getSettings().isShowInTab()) {
+        if (!showInTab) {
             plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
                 if (npc.isSpawned()) {
                     npc.data().set(NPC.Metadata.REMOVE_FROM_TABLIST, true);
