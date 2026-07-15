@@ -23,8 +23,15 @@ public class BotManager {
     }
 
     public NPC spawnBot(Location loc, String name) {
+        String uniqueName = name;
+        int suffix = 1;
+        while (getNPC(uniqueName) != null) {
+            uniqueName = name + "_" + suffix;
+            suffix++;
+        }
+
         NPCRegistry registry = CitizensAPI.getNPCRegistry();
-        NPC npc = registry.createNPC(EntityType.PLAYER, name);
+        NPC npc = registry.createNPC(EntityType.PLAYER, uniqueName);
         npc.addTrait(PvPBotTrait.class);
 
         PvPBotTrait trait = npc.getTraitNullable(PvPBotTrait.class);
@@ -48,8 +55,9 @@ public class BotManager {
         }
 
         activeNPCs.put(npc.getUniqueId(), npc);
-        plugin.getLogger().info("Spawned bot: " + name + " at " + loc.getWorld().getName() + " " +
+        plugin.getLogger().info("Spawned bot: " + uniqueName + " at " + loc.getWorld().getName() + " " +
                 loc.getBlockX() + " " + loc.getBlockY() + " " + loc.getBlockZ());
+        PvPBotPlugin.broadcastDebug("BotManager: Spawned bot '" + uniqueName + "'");
         return npc;
     }
 
@@ -60,6 +68,7 @@ public class BotManager {
                 npc.destroy();
                 activeNPCs.remove(entry.getKey());
                 plugin.getLogger().info("Removed bot: " + name);
+                PvPBotPlugin.broadcastDebug("BotManager: Removed bot '" + name + "'");
                 return;
             }
         }

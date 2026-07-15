@@ -2,12 +2,17 @@ package com.pvpbot.bot;
 
 import org.bukkit.configuration.file.FileConfiguration;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 public class BotSettings {
 
     private double moveSpeed = 0.25;
     private boolean bhop = false;
     private boolean idle = false;
     private int idleRadius = 15;
+    private int viewDistance = 32;
+    private boolean retreat = false;
     private boolean combat = true;
     private boolean revenge = true;
     private boolean autoTarget = true;
@@ -45,8 +50,183 @@ public class BotSettings {
     private double aimSpeed = 15.0;
     private boolean showInTab = true;
     private boolean botLeaveOnDeath = false;
+    private boolean debug = false;
 
     private final Object lock = new Object();
+
+    public static final String[] SETTING_KEYS = {
+        "move-speed", "bhop", "idle", "idle-radius", "view-distance", "retreat",
+        "combat", "revenge", "auto-target", "criticals",
+        "target-players", "target-mobs", "target-bots",
+        "attack-cooldown", "melee-range", "prefer-sword",
+        "ranged", "mace", "ranged-min-range", "ranged-optimal-range", "ranged-max-range",
+        "bow-draw-ticks", "arrow-prediction", "ranged-strafe", "ranged-retreat",
+        "auto-shield", "shield-break", "shield-break-chance", "shield-hold-ticks",
+        "shield-raise-ticks", "shield-mace",
+        "auto-armor", "auto-weapon", "auto-eat", "auto-potion", "auto-mend",
+        "auto-totem", "totem-priority",
+        "miss-chance", "mistake-chance", "aim-speed",
+        "show-in-tab", "bot-leave-on-death", "debug"
+    };
+
+    private static final Map<String, SettingType> SETTING_TYPES = new LinkedHashMap<>();
+
+    static {
+        for (String key : SETTING_KEYS) {
+            SETTING_TYPES.put(key, null);
+        }
+        SETTING_TYPES.put("move-speed", SettingType.DOUBLE);
+        SETTING_TYPES.put("bhop", SettingType.BOOLEAN);
+        SETTING_TYPES.put("idle", SettingType.BOOLEAN);
+        SETTING_TYPES.put("idle-radius", SettingType.INTEGER);
+        SETTING_TYPES.put("view-distance", SettingType.INTEGER);
+        SETTING_TYPES.put("retreat", SettingType.BOOLEAN);
+        SETTING_TYPES.put("combat", SettingType.BOOLEAN);
+        SETTING_TYPES.put("revenge", SettingType.BOOLEAN);
+        SETTING_TYPES.put("auto-target", SettingType.BOOLEAN);
+        SETTING_TYPES.put("criticals", SettingType.BOOLEAN);
+        SETTING_TYPES.put("target-players", SettingType.BOOLEAN);
+        SETTING_TYPES.put("target-mobs", SettingType.BOOLEAN);
+        SETTING_TYPES.put("target-bots", SettingType.BOOLEAN);
+        SETTING_TYPES.put("attack-cooldown", SettingType.INTEGER);
+        SETTING_TYPES.put("melee-range", SettingType.DOUBLE);
+        SETTING_TYPES.put("prefer-sword", SettingType.BOOLEAN);
+        SETTING_TYPES.put("ranged", SettingType.BOOLEAN);
+        SETTING_TYPES.put("mace", SettingType.BOOLEAN);
+        SETTING_TYPES.put("ranged-min-range", SettingType.DOUBLE);
+        SETTING_TYPES.put("ranged-optimal-range", SettingType.DOUBLE);
+        SETTING_TYPES.put("ranged-max-range", SettingType.DOUBLE);
+        SETTING_TYPES.put("bow-draw-ticks", SettingType.INTEGER);
+        SETTING_TYPES.put("arrow-prediction", SettingType.BOOLEAN);
+        SETTING_TYPES.put("ranged-strafe", SettingType.BOOLEAN);
+        SETTING_TYPES.put("ranged-retreat", SettingType.BOOLEAN);
+        SETTING_TYPES.put("auto-shield", SettingType.BOOLEAN);
+        SETTING_TYPES.put("shield-break", SettingType.BOOLEAN);
+        SETTING_TYPES.put("shield-break-chance", SettingType.INTEGER);
+        SETTING_TYPES.put("shield-hold-ticks", SettingType.INTEGER);
+        SETTING_TYPES.put("shield-raise-ticks", SettingType.INTEGER);
+        SETTING_TYPES.put("shield-mace", SettingType.BOOLEAN);
+        SETTING_TYPES.put("auto-armor", SettingType.BOOLEAN);
+        SETTING_TYPES.put("auto-weapon", SettingType.BOOLEAN);
+        SETTING_TYPES.put("auto-eat", SettingType.BOOLEAN);
+        SETTING_TYPES.put("auto-potion", SettingType.BOOLEAN);
+        SETTING_TYPES.put("auto-mend", SettingType.BOOLEAN);
+        SETTING_TYPES.put("auto-totem", SettingType.BOOLEAN);
+        SETTING_TYPES.put("totem-priority", SettingType.BOOLEAN);
+        SETTING_TYPES.put("miss-chance", SettingType.INTEGER);
+        SETTING_TYPES.put("mistake-chance", SettingType.INTEGER);
+        SETTING_TYPES.put("aim-speed", SettingType.DOUBLE);
+        SETTING_TYPES.put("show-in-tab", SettingType.BOOLEAN);
+        SETTING_TYPES.put("bot-leave-on-death", SettingType.BOOLEAN);
+        SETTING_TYPES.put("debug", SettingType.BOOLEAN);
+    }
+
+    public enum SettingType {
+        BOOLEAN, INTEGER, DOUBLE
+    }
+
+    public static SettingType getType(String key) {
+        return SETTING_TYPES.get(key);
+    }
+
+    public Object getValue(String key) {
+        switch (key) {
+            case "move-speed": return getMoveSpeed();
+            case "bhop": return isBhop();
+            case "idle": return isIdle();
+            case "idle-radius": return getIdleRadius();
+            case "view-distance": return getViewDistance();
+            case "retreat": return isRetreat();
+            case "combat": return isCombat();
+            case "revenge": return isRevenge();
+            case "auto-target": return isAutoTarget();
+            case "criticals": return isCriticals();
+            case "target-players": return isTargetPlayers();
+            case "target-mobs": return isTargetMobs();
+            case "target-bots": return isTargetBots();
+            case "attack-cooldown": return getAttackCooldown();
+            case "melee-range": return getMeleeRange();
+            case "prefer-sword": return isPreferSword();
+            case "ranged": return isRanged();
+            case "mace": return isMace();
+            case "ranged-min-range": return getRangedMinRange();
+            case "ranged-optimal-range": return getRangedOptimalRange();
+            case "ranged-max-range": return getRangedMaxRange();
+            case "bow-draw-ticks": return getBowDrawTicks();
+            case "arrow-prediction": return isArrowPrediction();
+            case "ranged-strafe": return isRangedStrafe();
+            case "ranged-retreat": return isRangedRetreat();
+            case "auto-shield": return isAutoShield();
+            case "shield-break": return isShieldBreak();
+            case "shield-break-chance": return getShieldBreakChance();
+            case "shield-hold-ticks": return getShieldHoldTicks();
+            case "shield-raise-ticks": return getShieldRaiseTicks();
+            case "shield-mace": return isShieldMace();
+            case "auto-armor": return isAutoArmor();
+            case "auto-weapon": return isAutoWeapon();
+            case "auto-eat": return isAutoEat();
+            case "auto-potion": return isAutoPotion();
+            case "auto-mend": return isAutoMend();
+            case "auto-totem": return isAutoTotem();
+            case "totem-priority": return isTotemPriority();
+            case "miss-chance": return getMissChance();
+            case "mistake-chance": return getMistakeChance();
+            case "aim-speed": return getAimSpeed();
+            case "show-in-tab": return isShowInTab();
+            case "bot-leave-on-death": return isBotLeaveOnDeath();
+            case "debug": return isDebug();
+            default: return null;
+        }
+    }
+
+    public void setValue(String key, Object value) {
+        switch (key) {
+            case "move-speed": setMoveSpeed(((Number) value).doubleValue()); break;
+            case "bhop": setBhop((Boolean) value); break;
+            case "idle": setIdle((Boolean) value); break;
+            case "idle-radius": setIdleRadius(((Number) value).intValue()); break;
+            case "view-distance": setViewDistance(((Number) value).intValue()); break;
+            case "retreat": setRetreat((Boolean) value); break;
+            case "combat": setCombat((Boolean) value); break;
+            case "revenge": setRevenge((Boolean) value); break;
+            case "auto-target": setAutoTarget((Boolean) value); break;
+            case "criticals": setCriticals((Boolean) value); break;
+            case "target-players": setTargetPlayers((Boolean) value); break;
+            case "target-mobs": setTargetMobs((Boolean) value); break;
+            case "target-bots": setTargetBots((Boolean) value); break;
+            case "attack-cooldown": setAttackCooldown(((Number) value).intValue()); break;
+            case "melee-range": setMeleeRange(((Number) value).doubleValue()); break;
+            case "prefer-sword": setPreferSword((Boolean) value); break;
+            case "ranged": setRanged((Boolean) value); break;
+            case "mace": setMace((Boolean) value); break;
+            case "ranged-min-range": setRangedMinRange(((Number) value).doubleValue()); break;
+            case "ranged-optimal-range": setRangedOptimalRange(((Number) value).doubleValue()); break;
+            case "ranged-max-range": setRangedMaxRange(((Number) value).doubleValue()); break;
+            case "bow-draw-ticks": setBowDrawTicks(((Number) value).intValue()); break;
+            case "arrow-prediction": setArrowPrediction((Boolean) value); break;
+            case "ranged-strafe": setRangedStrafe((Boolean) value); break;
+            case "ranged-retreat": setRangedRetreat((Boolean) value); break;
+            case "auto-shield": setAutoShield((Boolean) value); break;
+            case "shield-break": setShieldBreak((Boolean) value); break;
+            case "shield-break-chance": setShieldBreakChance(((Number) value).intValue()); break;
+            case "shield-hold-ticks": setShieldHoldTicks(((Number) value).intValue()); break;
+            case "shield-raise-ticks": setShieldRaiseTicks(((Number) value).intValue()); break;
+            case "shield-mace": setShieldMace((Boolean) value); break;
+            case "auto-armor": setAutoArmor((Boolean) value); break;
+            case "auto-weapon": setAutoWeapon((Boolean) value); break;
+            case "auto-eat": setAutoEat((Boolean) value); break;
+            case "auto-potion": setAutoPotion((Boolean) value); break;
+            case "auto-mend": setAutoMend((Boolean) value); break;
+            case "auto-totem": setAutoTotem((Boolean) value); break;
+            case "totem-priority": setTotemPriority((Boolean) value); break;
+            case "miss-chance": setMissChance(((Number) value).intValue()); break;
+            case "mistake-chance": setMistakeChance(((Number) value).intValue()); break;
+            case "aim-speed": setAimSpeed(((Number) value).doubleValue()); break;
+            case "show-in-tab": setShowInTab((Boolean) value); break;
+            case "bot-leave-on-death": setBotLeaveOnDeath((Boolean) value); break;
+            case "debug": setDebug((Boolean) value); break;
+        }
+    }
 
     public void loadFromConfig(FileConfiguration config) {
         String p = "bot-settings.";
@@ -55,6 +235,8 @@ public class BotSettings {
             bhop = config.getBoolean(p + "bhop", false);
             idle = config.getBoolean(p + "idle", false);
             idleRadius = clamp(config.getInt(p + "idle-radius", 15), 0, 100);
+            viewDistance = clamp(config.getInt(p + "view-distance", 32), 1, 128);
+            retreat = config.getBoolean(p + "retreat", false);
             combat = config.getBoolean(p + "combat", true);
             revenge = config.getBoolean(p + "revenge", true);
             autoTarget = config.getBoolean(p + "auto-target", true);
@@ -92,6 +274,7 @@ public class BotSettings {
             aimSpeed = clamp(config.getDouble(p + "aim-speed", 15.0), 0.0, 100.0);
             showInTab = config.getBoolean(p + "show-in-tab", true);
             botLeaveOnDeath = config.getBoolean(p + "bot-leave-on-death", false);
+            debug = config.getBoolean(p + "debug", false);
         }
     }
 
@@ -102,6 +285,8 @@ public class BotSettings {
             config.set(p + "bhop", bhop);
             config.set(p + "idle", idle);
             config.set(p + "idle-radius", idleRadius);
+            config.set(p + "view-distance", viewDistance);
+            config.set(p + "retreat", retreat);
             config.set(p + "combat", combat);
             config.set(p + "revenge", revenge);
             config.set(p + "auto-target", autoTarget);
@@ -139,6 +324,7 @@ public class BotSettings {
             config.set(p + "aim-speed", aimSpeed);
             config.set(p + "show-in-tab", showInTab);
             config.set(p + "bot-leave-on-death", botLeaveOnDeath);
+            config.set(p + "debug", debug);
         }
     }
 
@@ -150,12 +336,12 @@ public class BotSettings {
         return Math.max(min, Math.min(max, value));
     }
 
-    // Thread-safe getters
-
     public double getMoveSpeed() { synchronized (lock) { return moveSpeed; } }
     public boolean isBhop() { synchronized (lock) { return bhop; } }
     public boolean isIdle() { synchronized (lock) { return idle; } }
     public int getIdleRadius() { synchronized (lock) { return idleRadius; } }
+    public int getViewDistance() { synchronized (lock) { return viewDistance; } }
+    public boolean isRetreat() { synchronized (lock) { return retreat; } }
     public boolean isCombat() { synchronized (lock) { return combat; } }
     public boolean isRevenge() { synchronized (lock) { return revenge; } }
     public boolean isAutoTarget() { synchronized (lock) { return autoTarget; } }
@@ -193,13 +379,14 @@ public class BotSettings {
     public double getAimSpeed() { synchronized (lock) { return aimSpeed; } }
     public boolean isShowInTab() { synchronized (lock) { return showInTab; } }
     public boolean isBotLeaveOnDeath() { synchronized (lock) { return botLeaveOnDeath; } }
-
-    // Thread-safe setters with clamping
+    public boolean isDebug() { synchronized (lock) { return debug; } }
 
     public void setMoveSpeed(double value) { synchronized (lock) { this.moveSpeed = clamp(value, 0.0, 10.0); } }
     public void setBhop(boolean value) { synchronized (lock) { this.bhop = value; } }
     public void setIdle(boolean value) { synchronized (lock) { this.idle = value; } }
     public void setIdleRadius(int value) { synchronized (lock) { this.idleRadius = clamp(value, 0, 100); } }
+    public void setViewDistance(int value) { synchronized (lock) { this.viewDistance = clamp(value, 1, 128); } }
+    public void setRetreat(boolean value) { synchronized (lock) { this.retreat = value; } }
     public void setCombat(boolean value) { synchronized (lock) { this.combat = value; } }
     public void setRevenge(boolean value) { synchronized (lock) { this.revenge = value; } }
     public void setAutoTarget(boolean value) { synchronized (lock) { this.autoTarget = value; } }
@@ -237,4 +424,5 @@ public class BotSettings {
     public void setAimSpeed(double value) { synchronized (lock) { this.aimSpeed = clamp(value, 0.0, 100.0); } }
     public void setShowInTab(boolean value) { synchronized (lock) { this.showInTab = value; } }
     public void setBotLeaveOnDeath(boolean value) { synchronized (lock) { this.botLeaveOnDeath = value; } }
+    public void setDebug(boolean value) { synchronized (lock) { this.debug = value; } }
 }

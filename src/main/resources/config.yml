@@ -3,6 +3,8 @@ bot-settings:
   bhop: false
   idle: false
   idle-radius: 15
+  view-distance: 32
+  retreat: false
   combat: true
   revenge: true
   auto-target: true
@@ -40,3 +42,4 @@ bot-settings:
   aim-speed: 15.0
   show-in-tab: true
   bot-leave-on-death: false
+  debug: false
