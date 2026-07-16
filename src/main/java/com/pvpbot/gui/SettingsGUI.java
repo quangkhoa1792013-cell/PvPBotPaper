@@ -15,12 +15,13 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.*;
 
-public class SettingsGUI implements Listener {
+public class SettingsGUI implements InventoryHolder, Listener {
 
     private final PvPBotPlugin plugin;
     private final BotManager botManager;
@@ -99,13 +100,18 @@ public class SettingsGUI implements Listener {
         this.botManager = botManager;
     }
 
+    @Override
+    public Inventory getInventory() {
+        return null;
+    }
+
     public void openGUI(Player player, NPC target) {
         PvPBotPlugin.broadcastDebug("Player " + player.getName() + " opened GUI: " + (target == null ? "GLOBAL" : "NPC-" + target.getName()));
         openMainMenu(player, target);
     }
 
     private void openMainMenu(Player player, NPC target) {
-        Inventory inv = Bukkit.createInventory(null, 27, TITLES.get(GUIType.MAIN));
+        Inventory inv = Bukkit.createInventory(this, 27, TITLES.get(GUIType.MAIN));
         ItemStack border = createItem(Material.GRAY_STAINED_GLASS_PANE, " ");
         for (int i = 0; i < 27; i++) {
             if (i >= 10 && i <= 16) continue;
@@ -134,7 +140,7 @@ public class SettingsGUI implements Listener {
             openMainMenu(player, target);
             return;
         }
-        Inventory inv = Bukkit.createInventory(null, 54, TITLES.get(page));
+        Inventory inv = Bukkit.createInventory(this, 54, TITLES.get(page));
         Material borderMat = BORDER_COLORS.getOrDefault(page, Material.GRAY_STAINED_GLASS_PANE);
         ItemStack border = createItem(borderMat, " ");
         for (int i = 0; i < 54; i++) {
@@ -224,8 +230,10 @@ public class SettingsGUI implements Listener {
     }
 
     @EventHandler
-    public void onInventoryDrag(InventoryDragEvent e) {
-        e.setCancelled(true);
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (event.getView().getTopInventory().getHolder() instanceof SettingsGUI) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler

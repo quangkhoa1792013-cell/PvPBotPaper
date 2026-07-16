@@ -22,8 +22,12 @@ CYAN='\033[1;36m'
 NC='\033[0m'
 
 # ── Environment ──────────────────────────────────────────
-export JAVA_HOME=/usr/lib/jvm/java-25-openjdk
-export PATH=$JAVA_HOME/bin:$PATH
+if ! java -version 2>&1 | grep -q 'version "25'; then
+    if [ -z "$JAVA_HOME" ] && [ -d "/usr/lib/jvm/java-25-openjdk" ]; then
+        export JAVA_HOME=/usr/lib/jvm/java-25-openjdk
+        export PATH=$JAVA_HOME/bin:$PATH
+    fi
+fi
 
 # ── Helpers ──────────────────────────────────────────────
 abort() {

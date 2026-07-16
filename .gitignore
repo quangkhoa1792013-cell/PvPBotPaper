@@ -4,10 +4,20 @@ build/
 bin/
 out/
 *.class
+*.jar
 *.log
 *.logs
 logs/
 lib/
 log/
 libs/
+
+# ---- IDE & Project ----
+.gradle/
+.idea/
+*.iml
+.settings/
+.project
+.classpath
+.vscode/
 

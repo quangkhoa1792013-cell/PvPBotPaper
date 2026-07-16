@@ -60,7 +60,7 @@ public class BotManager {
         return npc;
     }
 
-    public void removeBot(String name) {
+    public boolean removeBot(String name) {
         for (Map.Entry<UUID, NPC> entry : activeNPCs.entrySet()) {
             NPC npc = entry.getValue();
             if (npc.getName().equals(name)) {
@@ -68,10 +68,11 @@ public class BotManager {
                 activeNPCs.remove(entry.getKey());
                 plugin.getLogger().info("Removed bot: " + name);
                 PvPBotPlugin.broadcastDebug("BotManager: Removed bot '" + name + "'");
-                return;
+                return true;
             }
         }
         plugin.getLogger().warning("Bot not found: " + name);
+        return false;
     }
 
     public void removeAll() {
@@ -93,5 +94,22 @@ public class BotManager {
 
     public Map<UUID, NPC> getActiveNPCs() {
         return activeNPCs;
+    }
+
+    public void reloadRegistry() {
+        activeNPCs.clear();
+        NPCRegistry registry = CitizensAPI.getNPCRegistry();
+        for (NPC npc : registry.sorted()) {
+            if (npc.hasTrait(PvPBotTrait.class)) {
+                PvPBotTrait trait = npc.getOrAddTrait(PvPBotTrait.class);
+                if (trait.getSettings() == null) {
+                    BotSettings settings = new BotSettings();
+                    settings.loadFromConfig(plugin.getConfig());
+                    trait.setSettings(settings);
+                }
+                activeNPCs.put(npc.getUniqueId(), npc);
+                PvPBotPlugin.broadcastDebug("Re-registered active NPC from Citizens saves with loaded settings: " + npc.getName());
+            }
+        }
     }
 }

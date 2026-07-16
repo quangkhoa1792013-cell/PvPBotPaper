@@ -38,6 +38,8 @@ public class PvPBotPlugin extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(settingsGUI, this);
 
+        botManager.reloadRegistry();
+
         getLogger().info("PvPBot v" + getDescription().getVersion() + " enabled successfully.");
     }
 

@@ -14,7 +14,9 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class PvPBotCommand implements TabExecutor {
@@ -76,10 +78,13 @@ public class PvPBotCommand implements TabExecutor {
             return true;
         }
         String name = args[1];
-        botManager.removeBot(name);
-        sender.sendMessage(ChatColor.GREEN + "Removed bot: " + name);
-        if (sender instanceof Player player) {
-            PvPBotPlugin.broadcastDebug("Player " + player.getName() + " removed bot '" + name + "'");
+        if (botManager.removeBot(name)) {
+            sender.sendMessage(ChatColor.GREEN + "Removed bot: " + name);
+            if (sender instanceof Player player) {
+                PvPBotPlugin.broadcastDebug("Player " + player.getName() + " removed bot '" + name + "'");
+            }
+        } else {
+            sender.sendMessage(ChatColor.RED + "Error: Bot not found: " + name);
         }
         return true;
     }
@@ -96,6 +101,56 @@ public class PvPBotCommand implements TabExecutor {
             for (String key : BotSettings.SETTING_KEYS) {
                 Object val = defaultSettings.getValue(key);
                 sender.sendMessage(ChatColor.YELLOW + key + ChatColor.WHITE + ": " + ChatColor.AQUA + val);
+            }
+            return true;
+        }
+
+        String second = args[1].toLowerCase();
+        boolean isKey = false;
+        for (String key : BotSettings.SETTING_KEYS) {
+            if (key.equals(second)) {
+                isKey = true;
+                break;
+            }
+        }
+
+        if (isKey) {
+            if (args.length == 2) {
+                sender.sendMessage(ChatColor.GOLD + "=== Global Setting: " + second + " ===");
+                sender.sendMessage(ChatColor.YELLOW + second + ChatColor.WHITE + ": " + ChatColor.AQUA + defaultSettings.getValue(second));
+                return true;
+            }
+            String key = second;
+            String valueStr = args[2];
+            BotSettings.SettingType type = BotSettings.getType(key);
+            if (type == null) {
+                sender.sendMessage(ChatColor.RED + "Unknown setting key: " + key);
+                return true;
+            }
+            try {
+                switch (type) {
+                    case BOOLEAN:
+                        if (!isValidBoolean(valueStr)) {
+                            sender.sendMessage(ChatColor.RED + "Error: Invalid boolean value! Use true or false.");
+                            return true;
+                        }
+                        boolean bVal = valueStr.equalsIgnoreCase("true") || valueStr.equals("1") || valueStr.equalsIgnoreCase("yes") || valueStr.equalsIgnoreCase("on");
+                        defaultSettings.setValue(key, bVal);
+                        break;
+                    case INTEGER:
+                        int iVal = Integer.parseInt(valueStr);
+                        defaultSettings.setValue(key, iVal);
+                        break;
+                    case DOUBLE:
+                        double dVal = Double.parseDouble(valueStr);
+                        defaultSettings.setValue(key, dVal);
+                        break;
+                }
+                PvPBotPlugin.getInstance().saveDefaultSettings();
+                sender.sendMessage(ChatColor.GREEN + "Global default " + key + " set to " + valueStr);
+                PvPBotPlugin.broadcastDebug("Command: Global default '" + key + "' set to " + valueStr);
+            } catch (NumberFormatException e) {
+                sender.sendMessage(ChatColor.RED + "Invalid number format: " + valueStr);
             }
             return true;
         }
@@ -127,7 +182,7 @@ public class PvPBotCommand implements TabExecutor {
             return true;
         }
 
-        String key = args[2];
+        String key = args[2].toLowerCase();
         String valueStr = args[3];
         BotSettings.SettingType type = BotSettings.getType(key);
         if (type == null) {
@@ -138,7 +193,11 @@ public class PvPBotCommand implements TabExecutor {
         try {
             switch (type) {
                 case BOOLEAN:
-                    boolean bVal = valueStr.equalsIgnoreCase("true") || valueStr.equals("1") || valueStr.equalsIgnoreCase("yes");
+                    if (!isValidBoolean(valueStr)) {
+                        sender.sendMessage(ChatColor.RED + "Error: Invalid boolean value! Use true or false.");
+                        return true;
+                    }
+                    boolean bVal = valueStr.equalsIgnoreCase("true") || valueStr.equals("1") || valueStr.equalsIgnoreCase("yes") || valueStr.equalsIgnoreCase("on");
                     botSettings.setValue(key, bVal);
                     break;
                 case INTEGER:
@@ -207,10 +266,16 @@ public class PvPBotCommand implements TabExecutor {
                     .filter(name -> name.toLowerCase().startsWith(partial))
                     .collect(Collectors.toList());
 
-            if (args[0].equalsIgnoreCase("gui") || args[0].equalsIgnoreCase("settings")) {
-                return names;
+            if (args[0].equalsIgnoreCase("settings")) {
+                Set<String> merged = new HashSet<>(names);
+                for (String key : BotSettings.SETTING_KEYS) {
+                    if (key.toLowerCase().startsWith(partial)) {
+                        merged.add(key);
+                    }
+                }
+                return new ArrayList<>(merged);
             }
-            if (args[0].equalsIgnoreCase("remove")) {
+            if (args[0].equalsIgnoreCase("gui") || args[0].equalsIgnoreCase("remove")) {
                 return names;
             }
             return List.of();
@@ -218,6 +283,20 @@ public class PvPBotCommand implements TabExecutor {
 
         if (args.length == 3 && args[0].equalsIgnoreCase("settings")) {
             String partial = args[2].toLowerCase();
+            BotSettings.SettingType arg1Type = BotSettings.getType(args[1].toLowerCase());
+            if (arg1Type != null) {
+                if (arg1Type == BotSettings.SettingType.BOOLEAN) {
+                    List<String> result = new ArrayList<>();
+                    String valPartial = partial;
+                    for (String opt : Arrays.asList("true", "false", "yes", "no", "on", "off")) {
+                        if (opt.startsWith(valPartial)) {
+                            result.add(opt);
+                        }
+                    }
+                    return result;
+                }
+                return List.of();
+            }
             List<String> result = new ArrayList<>();
             for (String key : BotSettings.SETTING_KEYS) {
                 if (key.startsWith(partial)) {
@@ -228,7 +307,7 @@ public class PvPBotCommand implements TabExecutor {
         }
 
         if (args.length == 4 && args[0].equalsIgnoreCase("settings")) {
-            String key = args[2];
+            String key = args[2].toLowerCase();
             BotSettings.SettingType type = BotSettings.getType(key);
             if (type == BotSettings.SettingType.BOOLEAN) {
                 String partial = args[3].toLowerCase();
@@ -243,5 +322,11 @@ public class PvPBotCommand implements TabExecutor {
         }
 
         return List.of();
+    }
+
+    private boolean isValidBoolean(String value) {
+        String lower = value.toLowerCase();
+        return lower.equals("true") || lower.equals("false") || lower.equals("yes") || lower.equals("no")
+            || lower.equals("1") || lower.equals("0") || lower.equals("on") || lower.equals("off");
     }
 }
