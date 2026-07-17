@@ -4,6 +4,7 @@ import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.trait.TraitInfo;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import com.khoablabla.pvpbot.commands.PvPBotCommand;
 import com.khoablabla.pvpbot.traits.PvPBotTrait;
 
 public class PvPBot extends JavaPlugin {
@@ -21,6 +22,15 @@ public class PvPBot extends JavaPlugin {
         );
 
         getLogger().info("PvPBot trait registered successfully.");
+
+        PvPBotCommand commandExecutor = new PvPBotCommand();
+        var pvpbotCommand = getCommand("pvpbot");
+        if (pvpbotCommand != null) {
+            pvpbotCommand.setExecutor(commandExecutor);
+            pvpbotCommand.setTabCompleter(commandExecutor);
+        } else {
+            getLogger().severe("Command 'pvpbot' not declared in plugin.yml");
+        }
 
         if (getServer().getPluginManager().isPluginEnabled("ProtocolLib")) {
             getLogger().info("ProtocolLib detected — advanced packet features available.");

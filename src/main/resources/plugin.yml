@@ -1,6 +1,12 @@
 name: PvPBot
-version: 1.0.0-SNAPSHOT
+version: 1.0.0
 api-version: 1.21
 main: com.khoablabla.pvpbot.PvPBot
 depend: [Citizens]
 softdepend: [ProtocolLib]
+
+commands:
+  pvpbot:
+    description: "PvPBot main management command"
+    permission: pvpbot.admin
+    usage: "/<command> [spawn|remove|removeall]"

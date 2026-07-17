@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Main-Class: com.khoablabla.pvpbot.PvPBot
+Plugin-Name: PvPBot
+Plugin-Version: 1.0.0
+Plugin-Main: com.khoablabla.pvpbot.PvPBot
+Plugin-API-Version: 1.21
+Plugin-Depend: Citizens
+Plugin-SoftDepend: ProtocolLib
+

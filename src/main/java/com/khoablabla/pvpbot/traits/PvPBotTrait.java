@@ -33,7 +33,7 @@ public class PvPBotTrait extends Trait {
     public void onSpawn() {
         if (npc.getEntity() instanceof Player player) {
             npc.setProtected(false);
-            npc.data().set(NPC.Metadata.DAMAGE_BY_PLAYER, true);
+            npc.data().set(NPC.Metadata.DAMAGE_OTHERS, true);
 
             JavaPlugin plugin = JavaPlugin.getPlugin(PvPBot.class);
             plugin.getLogger().info("PvPBot NPC '" + npc.getName() + "' (ID: " + npc.getId()
@@ -55,7 +55,7 @@ public class PvPBotTrait extends Trait {
         if (npc.getEntity() instanceof Player player) {
             double health = player.getHealth();
             Bukkit.getLogger().info("[PvPBot] " + npc.getName() + " (ID: " + npc.getId()
-                    + ") is alive with HP: " + health);
+                    + ") is ticking at 20TPS. Health: " + health);
         }
     }
 }
