@@ -1,0 +1,54 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.pvpbot'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://repo.papermc.io/repository/maven-public/' }
+    maven { url 'https://repo.dmulloy2.net/nexus/content/repositories/public/' }
+    maven { url 'https://maven.citizensnpcs.co/repo' }
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT'
+    compileOnly('net.citizensnpcs:citizens-main:2.0.35-SNAPSHOT') {
+        exclude group: '*', module: '*'
+    }
+    compileOnly 'com.comphenix.protocol:ProtocolLib:5.2.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xlint:unchecked' << '-Xlint:deprecation'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    manifest {
+        attributes(
+            'Main-Class': 'com.khoablabla.pvpbot.PvPBot',
+            'Plugin-Name': 'PvPBot',
+            'Plugin-Version': version,
+            'Plugin-Main': 'com.khoablabla.pvpbot.PvPBot',
+            'Plugin-API-Version': '1.21',
+            'Plugin-Depend': 'Citizens',
+            'Plugin-SoftDepend': 'ProtocolLib'
+        )
+    }
+    from {
+        configurations.compileOnly.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}

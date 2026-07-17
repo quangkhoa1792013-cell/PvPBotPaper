@@ -4,7 +4,6 @@ build/
 bin/
 out/
 *.class
-*.jar
 *.log
 *.logs
 logs/

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 # Khai báo các ID và file tương ứng
-ID_DEBUG="ses_09ee9bb5effeYD3LCJ57P0QLkJ"
+ID_DEBUG="ses_090e49f8dffeI9ymSHFVFOK0np"
 FILE_DEBUG="ses-debug.json"
 
-ID_CODING="ses_09a5ce0a3fferZ9rsN3my3RZjC"
+ID_CODING="ses_090e4b0cbffesnrSrdr0YvUYHL"
 FILE_CODING="ses-coding.json"
 
 echo "======================================="
