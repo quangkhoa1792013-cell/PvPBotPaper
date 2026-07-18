@@ -1,3 +1,4 @@
+// Phase 2: Safe Spawn Offset and Height Boundary Guards
 package com.khoablabla.pvpbot.utils;
 
 import org.bukkit.Location;

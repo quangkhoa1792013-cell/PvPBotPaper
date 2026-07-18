@@ -1,3 +1,5 @@
+// Phase 1: Citizens Trait Base Lifecycle
+// Phase 2: Tablist & Player Simulation
 package com.khoablabla.pvpbot.traits;
 
 import net.citizensnpcs.api.npc.NPC;
@@ -11,6 +13,7 @@ import com.khoablabla.pvpbot.PvPBot;
 
 public class PvPBotTrait extends Trait {
 
+    // Phase 2: Tick counter for throttled debug logging
     private int tickCounter = 0;
 
     public PvPBotTrait() {

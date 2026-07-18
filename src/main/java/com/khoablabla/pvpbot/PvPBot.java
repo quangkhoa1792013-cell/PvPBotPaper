@@ -1,3 +1,5 @@
+// Phase 1: Core Skeleton & Trait Registration
+// Phase 2: Command Executor Integration
 package com.khoablabla.pvpbot;
 
 import net.citizensnpcs.api.CitizensAPI;
@@ -5,6 +7,7 @@ import net.citizensnpcs.api.trait.TraitInfo;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.khoablabla.pvpbot.commands.PvPBotCommand;
+import com.khoablabla.pvpbot.listeners.PlayerSimulationListener;
 import com.khoablabla.pvpbot.traits.PvPBotTrait;
 
 public class PvPBot extends JavaPlugin {
@@ -22,6 +25,10 @@ public class PvPBot extends JavaPlugin {
         );
 
         getLogger().info("PvPBot trait registered successfully.");
+
+        PlayerSimulationListener simListener = new PlayerSimulationListener(this);
+        getServer().getPluginManager().registerEvents(simListener, this);
+        getLogger().info("PlayerSimulationListener registered.");
 
         PvPBotCommand commandExecutor = new PvPBotCommand();
         var pvpbotCommand = getCommand("pvpbot");

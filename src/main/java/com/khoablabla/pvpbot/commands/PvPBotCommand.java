@@ -1,3 +1,4 @@
+// Phase 2: Core Commands, Mass Spawn, and Tab Completion
 package com.khoablabla.pvpbot.commands;
 
 import net.citizensnpcs.api.CitizensAPI;
@@ -30,7 +31,7 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 0) {
-            sender.sendMessage("Usage: /pvpbot spawn [name] | /pvpbot remove | /pvpbot removeall");
+            sender.sendMessage("Usage: /pvpbot spawn [name|number] [name2...] | /pvpbot remove | /pvpbot removeall");
             return true;
         }
 
@@ -39,7 +40,7 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
             case "remove" -> handleRemove(sender);
             case "removeall" -> handleRemoveAll(sender);
             default -> {
-                sender.sendMessage("Unknown subcommand. Usage: /pvpbot spawn [name] | /pvpbot remove | /pvpbot removeall");
+                sender.sendMessage("Unknown subcommand. Usage: /pvpbot spawn [name|number] [name2...] | /pvpbot remove | /pvpbot removeall");
                 yield true;
             }
         };
@@ -51,20 +52,92 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        String name = (args.length >= 2) ? args[1] : "Bot_" + (random.nextInt(9000) + 1000);
-
-        var safeLocation = SafeLocationFinder.findSafeLocation(player.getLocation());
-        if (safeLocation == null) {
-            sender.sendMessage("§c[PvPBot] Cannot find a safe location to spawn the bot in this area!");
+        if (args.length == 1) {
+            String name = generateUniqueRealisticName();
+            spawnSingleBot(player, name);
+            player.sendMessage("Spawned PvPBot '" + name + "'");
             return true;
         }
 
+        if (args.length == 2) {
+            try {
+                int count = Integer.parseInt(args[1]);
+                count = Math.max(1, Math.min(50, count));
+                int spawned = 0;
+                for (int i = 0; i < count; i++) {
+                    String name = generateUniqueRealisticName();
+                    if (spawnSingleBot(player, name)) spawned++;
+                }
+                player.sendMessage("Spawned " + spawned + " random PvPBot(s).");
+                return true;
+            } catch (NumberFormatException e) {
+                String name = args[1];
+                if (name.contains("<") || name.contains(">")) {
+                    player.sendMessage("§c[PvPBot] Invalid name '" + name + "' — name must not contain brackets.");
+                    return true;
+                }
+                if (isNameTaken(name)) {
+                    player.sendMessage("§c[PvPBot] A bot with the name '" + name + "' already exists!");
+                    return true;
+                }
+                spawnSingleBot(player, name);
+                player.sendMessage("Spawned PvPBot '" + name + "'");
+                return true;
+            }
+        }
+
+        int spawned = 0;
+        for (int i = 1; i < args.length; i++) {
+            String name = args[i];
+            if (name.contains("<") || name.contains(">")) {
+                player.sendMessage("§c[PvPBot] Skipping '" + name + "' — name must not contain brackets.");
+                continue;
+            }
+            if (isNameTaken(name)) {
+                player.sendMessage("§c[PvPBot] Skipping '" + name + "' — a bot with that name already exists.");
+                continue;
+            }
+            if (spawnSingleBot(player, name)) spawned++;
+        }
+        player.sendMessage("Spawned " + spawned + " custom PvPBot(s).");
+        return true;
+    }
+
+    private boolean spawnSingleBot(Player player, String name) {
+        var safeLocation = SafeLocationFinder.findSafeLocation(player.getLocation());
+        if (safeLocation == null) return false;
+
         NPC npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, name);
+        npc.data().set(NPC.Metadata.REMOVE_FROM_PLAYERLIST, false);
+        npc.data().set(NPC.Metadata.NAMEPLATE_VISIBLE, true);
         npc.addTrait(PvPBotTrait.class);
         npc.spawn(safeLocation);
-
-        player.sendMessage("Spawned PvPBot '" + name + "' (ID: " + npc.getId() + ")");
         return true;
+    }
+
+    private boolean isNameTaken(String name) {
+        for (NPC npc : CitizensAPI.getNPCRegistry()) {
+            if (npc.hasTrait(PvPBotTrait.class) && npc.getName().equalsIgnoreCase(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String generateUniqueRealisticName() {
+        String[] prefixes = {"Bread", "Beard", "Steve", "Alex", "Miner", "Slayer", "Gamer", "Hunter", "Pvp", "Pro", "Craft", "Knight"};
+        String[] suffixes = {"1412", "99", "123", "77", "88", "_pvp", "_pro", "_gg", "456", "321"};
+
+        String name;
+        int attempts = 0;
+        do {
+            String prefix = prefixes[random.nextInt(prefixes.length)];
+            String suffix = suffixes[random.nextInt(suffixes.length)];
+            name = prefix + suffix;
+            attempts++;
+        } while (isNameTaken(name) && attempts < 100);
+
+        return name;
     }
 
     private boolean handleRemove(CommandSender sender) {
@@ -109,9 +182,6 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
             return List.of("spawn", "remove", "removeall").stream()
                     .filter(s -> s.startsWith(partial))
                     .toList();
-        }
-        if (args.length == 2 && args[0].equalsIgnoreCase("spawn")) {
-            return List.of("<name>");
         }
         return List.of();
     }
