@@ -5,16 +5,12 @@ package com.khoablabla.pvpbot.traits;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.trait.Trait;
 
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.khoablabla.pvpbot.PvPBot;
 
 public class PvPBotTrait extends Trait {
-
-    // Phase 2: Tick counter for throttled debug logging
-    private int tickCounter = 0;
 
     public PvPBotTrait() {
         super("pvpbot");
@@ -52,13 +48,5 @@ public class PvPBotTrait extends Trait {
 
     @Override
     public void run() {
-        tickCounter++;
-        if (tickCounter % 100 != 0) return;
-
-        if (npc.getEntity() instanceof Player player) {
-            double health = player.getHealth();
-            Bukkit.getLogger().info("[PvPBot] " + npc.getName() + " (ID: " + npc.getId()
-                    + ") is ticking at 20TPS. Health: " + health);
-        }
     }
 }

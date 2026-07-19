@@ -1,6 +1,5 @@
 plugins {
     id 'java'
-    id 'application'
 }
 
 group = 'com.pvpbot'
@@ -13,15 +12,15 @@ java {
 
 repositories {
     mavenCentral()
-    maven { url 'https://repo.papermc.io/repository/maven-public/' }
-    maven { url 'https://repo.comphenix.net/content/repositories/public/' }
+    maven { url = uri('https://repo.papermc.io/repository/maven-public/') }
+    maven { url = uri('https://repo.comphenix.net/content/repositories/public/') }
     flatDir { dirs 'libs' }
 }
 
 dependencies {
     compileOnly 'io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT'
-    compileOnly name: 'citizens'
-    compileOnly name: 'protocollib'
+    compileOnly ':citizens'
+    compileOnly ':protocollib'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
 }
 

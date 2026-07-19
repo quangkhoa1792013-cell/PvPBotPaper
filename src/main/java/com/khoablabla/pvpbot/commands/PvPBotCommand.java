@@ -1,6 +1,8 @@
 // Phase 2: Core Commands, Mass Spawn, and Tab Completion
 package com.khoablabla.pvpbot.commands;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 
@@ -61,9 +63,9 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             String name = generateUniqueRealisticName();
             if (spawnSingleBot(player, name)) {
-                Bukkit.getServer().broadcastMessage("§e" + name + " joined the game");
+                broadcastJoin(name);
+                player.sendMessage("Spawned PvPBot '" + name + "'");
             }
-            player.sendMessage("Spawned PvPBot '" + name + "'");
             return true;
         }
 
@@ -76,7 +78,7 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
                     String name = generateUniqueRealisticName();
                     if (spawnSingleBot(player, name)) {
                         spawned++;
-                        Bukkit.getServer().broadcastMessage("§e" + name + " joined the game");
+                        broadcastJoin(name);
                     }
                 }
                 player.sendMessage("Spawned " + spawned + " random PvPBot(s).");
@@ -92,9 +94,9 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (spawnSingleBot(player, name)) {
-                    Bukkit.getServer().broadcastMessage("§e" + name + " joined the game");
+                    broadcastJoin(name);
+                    player.sendMessage("Spawned PvPBot '" + name + "'");
                 }
-                player.sendMessage("Spawned PvPBot '" + name + "'");
                 return true;
             }
         }
@@ -112,7 +114,7 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
             }
             if (spawnSingleBot(player, name)) {
                 spawned++;
-                Bukkit.getServer().broadcastMessage("§e" + name + " joined the game");
+                broadcastJoin(name);
             }
         }
         player.sendMessage("Spawned " + spawned + " custom PvPBot(s).");
@@ -170,6 +172,11 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
             attempts++;
         } while (isNameTaken(name) && attempts < 100);
 
+        if (isNameTaken(name)) {
+            name = (name + "_" + System.currentTimeMillis());
+            if (name.length() > 16) name = name.substring(0, 16);
+        }
+
         return name;
     }
 
@@ -181,7 +188,6 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§c[PvPBot] No PvPBot named '" + name + "' found.");
                 return true;
             }
-            Bukkit.getServer().broadcastMessage("§e" + npc.getName() + " left the game");
             npc.destroy();
             sender.sendMessage("Removed PvPBot '" + name + "'");
             return true;
@@ -204,7 +210,6 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        Bukkit.getServer().broadcastMessage("§e" + npc.getName() + " left the game");
         npc.destroy();
         sender.sendMessage("Removed PvPBot (ID: " + npc.getId() + ")");
         return true;
@@ -221,7 +226,6 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
         int total = toRemove.size();
         if (total <= 20) {
             for (NPC npc : toRemove) {
-                Bukkit.getServer().broadcastMessage("§e" + npc.getName() + " left the game");
                 npc.destroy();
             }
             sender.sendMessage("Removed " + total + " PvPBot(s).");
@@ -230,6 +234,7 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
 
         sender.sendMessage("§a[PvPBot] Initiating safe batch deletion for " + total + " bots (20 bots per 5 ticks)...");
 
+        final String senderName = sender.getName();
         final int[] index = {0};
         new BukkitRunnable() {
             @Override
@@ -240,7 +245,12 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
                 }
                 if (index[0] >= total) {
                     cancel();
-                    sender.sendMessage("§e[PvPBot] Safely cleared all " + total + " bots in batches.");
+                    Player player = Bukkit.getPlayerExact(senderName);
+                    if (player != null) {
+                        player.sendMessage("§e[PvPBot] Safely cleared all " + total + " bots in batches.");
+                    } else {
+                        Bukkit.getLogger().info("[PvPBot] Safely cleared all " + total + " bots in batches (sender offline).");
+                    }
                 }
             }
         }.runTaskTimer(JavaPlugin.getPlugin(PvPBot.class), 0L, 5L);
@@ -255,6 +265,10 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
             }
         }
         return null;
+    }
+
+    private void broadcastJoin(String name) {
+        Bukkit.getServer().broadcast(Component.text(name + " joined the game", NamedTextColor.YELLOW));
     }
 
     @Override

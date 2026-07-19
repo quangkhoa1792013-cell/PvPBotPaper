@@ -7,7 +7,7 @@
 
 # ── Metadata Configuration ─────────────────────────────────
 TARGET_SERVER="Paper 1.21.11"
-SUPPORTED_PLATFORMS="Paper, Purpur (1.21.x)"
+SUPPORTED_PLATFORMS="Paper"
 REQUIRED_JAVA="Java 25"
 PROJECT_TYPE="Pure NMS PvP Bot Engine"
 SRC_DIR="src/main/java"

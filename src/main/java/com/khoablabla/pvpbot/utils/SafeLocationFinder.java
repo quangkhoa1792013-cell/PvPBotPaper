@@ -8,10 +8,17 @@ import org.bukkit.block.Block;
 
 public final class SafeLocationFinder {
 
+    private static final java.util.Set<Material> HAZARDOUS_BLOCKS = java.util.Set.of(
+        Material.LAVA, Material.FIRE, Material.SOUL_FIRE, Material.CACTUS,
+        Material.MAGMA_BLOCK, Material.CAMPFIRE, Material.SOUL_CAMPFIRE,
+        Material.SWEET_BERRY_BUSH, Material.POWDER_SNOW, Material.NETHER_PORTAL
+    );
+
     private SafeLocationFinder() {
     }
 
     public static Location findSafeLocation(Location origin) {
+        if (origin == null || origin.getWorld() == null) return null;
         if (isSafe(origin)) return origin;
 
         Location worldOrigin = origin.clone();
@@ -45,7 +52,10 @@ public final class SafeLocationFinder {
         Block head = loc.clone().add(0, 1, 0).getBlock();
         Block below = loc.clone().add(0, -1, 0).getBlock();
 
-        return isNonSolid(feet) && isNonSolid(head) && isSolidSupport(below);
+        if (!isNonSolid(feet) || !isNonSolid(head)) return false;
+        if (HAZARDOUS_BLOCKS.contains(below.getType())) return false;
+        if (feet.isLiquid() || head.isLiquid()) return false;
+        return isSolidSupport(below);
     }
 
     private static boolean isNonSolid(Block block) {
