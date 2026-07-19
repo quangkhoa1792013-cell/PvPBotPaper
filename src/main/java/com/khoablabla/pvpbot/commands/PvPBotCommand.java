@@ -4,6 +4,7 @@ package com.khoablabla.pvpbot.commands;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -12,11 +13,16 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 
+import com.khoablabla.pvpbot.PvPBot;
 import com.khoablabla.pvpbot.traits.PvPBotTrait;
 import com.khoablabla.pvpbot.utils.SafeLocationFinder;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
 public class PvPBotCommand implements CommandExecutor, TabCompleter {
 
@@ -31,16 +37,16 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 0) {
-            sender.sendMessage("Usage: /pvpbot spawn [name|number] [name2...] | /pvpbot remove | /pvpbot removeall");
+            sender.sendMessage("Usage: /pvpbot spawn [name|number] [name2...] | /pvpbot remove [name] | /pvpbot removeall");
             return true;
         }
 
         return switch (args[0].toLowerCase()) {
             case "spawn" -> handleSpawn(sender, args);
-            case "remove" -> handleRemove(sender);
+            case "remove" -> handleRemove(sender, args);
             case "removeall" -> handleRemoveAll(sender);
             default -> {
-                sender.sendMessage("Unknown subcommand. Usage: /pvpbot spawn [name|number] [name2...] | /pvpbot remove | /pvpbot removeall");
+                sender.sendMessage("Unknown subcommand. Usage: /pvpbot spawn [name|number] [name2...] | /pvpbot remove [name] | /pvpbot removeall");
                 yield true;
             }
         };
@@ -54,7 +60,9 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 1) {
             String name = generateUniqueRealisticName();
-            spawnSingleBot(player, name);
+            if (spawnSingleBot(player, name)) {
+                Bukkit.getServer().broadcastMessage("§e" + name + " joined the game");
+            }
             player.sendMessage("Spawned PvPBot '" + name + "'");
             return true;
         }
@@ -66,7 +74,10 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
                 int spawned = 0;
                 for (int i = 0; i < count; i++) {
                     String name = generateUniqueRealisticName();
-                    if (spawnSingleBot(player, name)) spawned++;
+                    if (spawnSingleBot(player, name)) {
+                        spawned++;
+                        Bukkit.getServer().broadcastMessage("§e" + name + " joined the game");
+                    }
                 }
                 player.sendMessage("Spawned " + spawned + " random PvPBot(s).");
                 return true;
@@ -80,7 +91,9 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
                     player.sendMessage("§c[PvPBot] A bot with the name '" + name + "' already exists!");
                     return true;
                 }
-                spawnSingleBot(player, name);
+                if (spawnSingleBot(player, name)) {
+                    Bukkit.getServer().broadcastMessage("§e" + name + " joined the game");
+                }
                 player.sendMessage("Spawned PvPBot '" + name + "'");
                 return true;
             }
@@ -97,7 +110,10 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("§c[PvPBot] Skipping '" + name + "' — a bot with that name already exists.");
                 continue;
             }
-            if (spawnSingleBot(player, name)) spawned++;
+            if (spawnSingleBot(player, name)) {
+                spawned++;
+                Bukkit.getServer().broadcastMessage("§e" + name + " joined the game");
+            }
         }
         player.sendMessage("Spawned " + spawned + " custom PvPBot(s).");
         return true;
@@ -109,9 +125,13 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
 
         NPC npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, name);
         npc.data().set(NPC.Metadata.REMOVE_FROM_PLAYERLIST, false);
+        npc.data().set(NPC.Metadata.REMOVE_FROM_TABLIST, false);
         npc.data().set(NPC.Metadata.NAMEPLATE_VISIBLE, true);
         npc.addTrait(PvPBotTrait.class);
-        npc.spawn(safeLocation);
+        if (!npc.spawn(safeLocation)) {
+            npc.destroy();
+            return false;
+        }
         return true;
     }
 
@@ -125,22 +145,48 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
     }
 
     private String generateUniqueRealisticName() {
-        String[] prefixes = {"Bread", "Beard", "Steve", "Alex", "Miner", "Slayer", "Gamer", "Hunter", "Pvp", "Pro", "Craft", "Knight"};
-        String[] suffixes = {"1412", "99", "123", "77", "88", "_pvp", "_pro", "_gg", "456", "321"};
+        String[] prefixes = {"Epic", "Dark", "Swift", "Mega", "Pro", "Hyper", "Crazy", "Shadow",
+                "Light", "Ghost", "Silent", "Iron", "Steel", "Frost", "Blaze", "Wild",
+                "Night", "Fire", "Ice", "Alpha", "Omega"};
+        String[] suffixes = {"Slayer", "Hunter", "Gamer", "Knight", "Viper", "Rider", "Seeker",
+                "Runner", "Glider", "Slasher", "Warrior", "Walker", "Brawler", "Master",
+                "Fighter", "Sniper", "Wolf", "Hawk", "Eagle", "Fox"};
 
         String name;
         int attempts = 0;
         do {
             String prefix = prefixes[random.nextInt(prefixes.length)];
             String suffix = suffixes[random.nextInt(suffixes.length)];
-            name = prefix + suffix;
+            String separator = random.nextBoolean() ? "_" : "";
+            String digits = String.valueOf(random.nextInt(9990) + 10);
+            boolean lowercase = random.nextBoolean();
+
+            String raw = prefix + separator + suffix + digits;
+            name = lowercase ? raw.toLowerCase() : raw;
+
+            if (name.length() > 16) name = name.substring(0, 16);
+            if (name.length() < 3) name = "Bot" + digits;
+
             attempts++;
         } while (isNameTaken(name) && attempts < 100);
 
         return name;
     }
 
-    private boolean handleRemove(CommandSender sender) {
+    private boolean handleRemove(CommandSender sender, String[] args) {
+        if (args.length >= 2) {
+            String name = args[1];
+            NPC npc = findPvPBotByName(name);
+            if (npc == null) {
+                sender.sendMessage("§c[PvPBot] No PvPBot named '" + name + "' found.");
+                return true;
+            }
+            Bukkit.getServer().broadcastMessage("§e" + npc.getName() + " left the game");
+            npc.destroy();
+            sender.sendMessage("Removed PvPBot '" + name + "'");
+            return true;
+        }
+
         if (!(sender instanceof Player player)) {
             sender.sendMessage("Only players can use this command.");
             return true;
@@ -158,21 +204,57 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        Bukkit.getServer().broadcastMessage("§e" + npc.getName() + " left the game");
         npc.destroy();
         sender.sendMessage("Removed PvPBot (ID: " + npc.getId() + ")");
         return true;
     }
 
     private boolean handleRemoveAll(CommandSender sender) {
-        int removed = 0;
+        List<NPC> toRemove = new ArrayList<>();
         for (NPC npc : CitizensAPI.getNPCRegistry()) {
             if (npc.hasTrait(PvPBotTrait.class)) {
-                npc.destroy();
-                removed++;
+                toRemove.add(npc);
             }
         }
-        sender.sendMessage("Removed " + removed + " PvPBot(s).");
+
+        int total = toRemove.size();
+        if (total <= 20) {
+            for (NPC npc : toRemove) {
+                Bukkit.getServer().broadcastMessage("§e" + npc.getName() + " left the game");
+                npc.destroy();
+            }
+            sender.sendMessage("Removed " + total + " PvPBot(s).");
+            return true;
+        }
+
+        sender.sendMessage("§a[PvPBot] Initiating safe batch deletion for " + total + " bots (20 bots per 5 ticks)...");
+
+        final int[] index = {0};
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                int end = Math.min(index[0] + 20, total);
+                for (; index[0] < end; index[0]++) {
+                    toRemove.get(index[0]).destroy();
+                }
+                if (index[0] >= total) {
+                    cancel();
+                    sender.sendMessage("§e[PvPBot] Safely cleared all " + total + " bots in batches.");
+                }
+            }
+        }.runTaskTimer(JavaPlugin.getPlugin(PvPBot.class), 0L, 5L);
+
         return true;
+    }
+
+    private NPC findPvPBotByName(String name) {
+        for (NPC npc : CitizensAPI.getNPCRegistry()) {
+            if (npc.hasTrait(PvPBotTrait.class) && npc.getName().equalsIgnoreCase(name)) {
+                return npc;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -183,6 +265,24 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
                     .filter(s -> s.startsWith(partial))
                     .toList();
         }
+
+        if (args.length == 2) {
+            String sub = args[0].toLowerCase();
+            if (sub.equals("remove")) {
+                String partial = args[1].toLowerCase();
+                List<String> activeBotNames = new ArrayList<>();
+                for (NPC npc : CitizensAPI.getNPCRegistry()) {
+                    if (npc.hasTrait(PvPBotTrait.class) && npc.isSpawned()) {
+                        String name = npc.getName();
+                        if (name.toLowerCase().startsWith(partial)) {
+                            activeBotNames.add(name);
+                        }
+                    }
+                }
+                return activeBotNames;
+            }
+        }
+
         return List.of();
     }
 }

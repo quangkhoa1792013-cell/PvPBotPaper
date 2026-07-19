@@ -1,14 +1,13 @@
-// Phase 2.4: Real Player Join, Leave, Death Announcements & 5s Respawn Loop
+// Phase 2.4: Real Player Join, Leave, Death Announcements & 10-tick Respawn Loop
 package com.khoablabla.pvpbot.listeners;
 
-import net.citizensnpcs.api.event.DespawnReason;
 import net.citizensnpcs.api.event.NPCDeathEvent;
-import net.citizensnpcs.api.event.NPCDespawnEvent;
 import net.citizensnpcs.api.event.NPCSpawnEvent;
 import net.citizensnpcs.api.npc.NPC;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -33,8 +32,6 @@ public class PlayerSimulationListener implements Listener {
         if (!npc.hasTrait(PvPBotTrait.class)) return;
         if (!(npc.getEntity() instanceof Player botPlayer)) return;
 
-        Bukkit.getLogger().info("§e" + npc.getName() + " joined the game");
-
         for (Player online : Bukkit.getOnlinePlayers()) {
             online.showPlayer(plugin, botPlayer);
         }
@@ -53,16 +50,6 @@ public class PlayerSimulationListener implements Listener {
     }
 
     @EventHandler
-    public void onNPCDespawn(NPCDespawnEvent event) {
-        NPC npc = event.getNPC();
-        if (!npc.hasTrait(PvPBotTrait.class)) return;
-
-        if (event.getReason() != DespawnReason.DEATH) {
-            Bukkit.broadcastMessage("§e" + npc.getName() + " left the game");
-        }
-    }
-
-    @EventHandler
     public void onNPCDeath(NPCDeathEvent event) {
         NPC npc = event.getNPC();
         if (!npc.hasTrait(PvPBotTrait.class)) return;
@@ -75,6 +62,9 @@ public class PlayerSimulationListener implements Listener {
 
         Location respawnLocation = npc.getStoredLocation();
         if (respawnLocation == null) {
+            respawnLocation = bukkitEvent.getEntity().getLocation();
+        }
+        if (respawnLocation == null && npc.getEntity() != null) {
             respawnLocation = npc.getEntity().getLocation();
         }
 
@@ -83,10 +73,15 @@ public class PlayerSimulationListener implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-                if (!finalNpc.isSpawned()) {
-                    finalNpc.spawn(finalLoc);
+                Entity entity = finalNpc.getEntity();
+                if (entity != null) {
+                    entity.remove();
                 }
+                if (finalNpc.isSpawned()) {
+                    finalNpc.despawn();
+                }
+                finalNpc.spawn(finalLoc);
             }
-        }.runTaskLater(plugin, 100);
+        }.runTaskLater(plugin, 10);
     }
 }
