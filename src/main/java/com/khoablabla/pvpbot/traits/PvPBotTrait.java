@@ -1,19 +1,40 @@
 // Phase 1: Citizens Trait Base Lifecycle
 // Phase 2: Tablist & Player Simulation
+// Phase 3: Core Melee Combat AI Integration
 package com.khoablabla.pvpbot.traits;
 
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.trait.Trait;
 
+import org.bukkit.GameMode;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.khoablabla.pvpbot.PvPBot;
+import com.khoablabla.pvpbot.combat.CombatTargetSelector;
+import com.khoablabla.pvpbot.combat.MeleeAttackController;
+import com.khoablabla.pvpbot.movement.BotMovementController;
 
 public class PvPBotTrait extends Trait {
 
+    private int tickCounter = 0;
+    private int idleTickCounter = 0;
+    private int lastDamageTick = 0;
+    private LivingEntity target = null;
+    private final BotMovementController movementController = new BotMovementController();
+    private final MeleeAttackController attackController = new MeleeAttackController();
+    private static final double TARGET_RANGE = 16.0;
+
     public PvPBotTrait() {
         super("pvpbot");
+    }
+
+    public void setTarget(LivingEntity newTarget) {
+        this.target = newTarget;
+        if (newTarget != null) {
+            lastDamageTick = tickCounter;
+        }
     }
 
     @Override
@@ -48,5 +69,30 @@ public class PvPBotTrait extends Trait {
 
     @Override
     public void run() {
+        tickCounter++;
+
+        if (tickCounter % 10 == 0) {
+            target = CombatTargetSelector.validateTarget(npc, TARGET_RANGE, target, tickCounter, lastDamageTick);
+            if (target instanceof Player p
+                    && (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR)) {
+                target = null;
+                npc.getNavigator().cancelNavigation();
+            }
+        }
+
+        if (target != null && !target.isDead() && target.isValid()) {
+            attackController.handleAttack(npc, target);
+            movementController.handleMovement(npc, target, tickCounter, attackController.isJumping());
+            idleTickCounter = 0;
+        } else {
+            target = null;
+            npc.getNavigator().cancelNavigation();
+
+            idleTickCounter++;
+            if (idleTickCounter >= 100) {
+                idleTickCounter = 0;
+                movementController.handleIdleWander(npc);
+            }
+        }
     }
 }

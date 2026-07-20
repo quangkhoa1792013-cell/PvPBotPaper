@@ -5,10 +5,8 @@ import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.event.NPCDeathEvent;
 import net.citizensnpcs.api.event.NPCSpawnEvent;
 import net.citizensnpcs.api.npc.NPC;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -16,6 +14,7 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -117,9 +116,22 @@ public class PlayerSimulationListener implements Listener {
                     player.setNoDamageTicks(10);
                 }
 
-                Bukkit.getServer().broadcast(Component.text(botName + " joined the game", NamedTextColor.YELLOW));
             }
         }.runTaskLater(plugin, 10);
+    }
+
+    @EventHandler
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        if (!(event.getDamager() instanceof Player attacker)) return;
+        if (attacker.getGameMode() == GameMode.CREATIVE || attacker.getGameMode() == GameMode.SPECTATOR) return;
+        if (!CitizensAPI.getNPCRegistry().isNPC(event.getEntity())) return;
+        NPC npc = CitizensAPI.getNPCRegistry().getNPC(event.getEntity());
+        if (!npc.hasTrait(PvPBotTrait.class)) return;
+
+        PvPBotTrait trait = npc.getTraitNullable(PvPBotTrait.class);
+        if (trait != null) {
+            trait.setTarget(attacker);
+        }
     }
 
     private String formatLocation(Location location) {

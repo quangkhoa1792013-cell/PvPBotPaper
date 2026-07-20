@@ -4,344 +4,380 @@
 └────────────────────────────────────────────────────────┘
 
 ==========================================================
-✅ --- HOTFIX ĐÃ ÁP DỤNG SAU LOG MOONRISE UUID ---
+🔎 --- PHẠM VI QUÉT ---
 ==========================================================
-- Đã sửa lỗi bot chết rồi biến mất do Moonrise báo `Entity uuid already exists`.
-- File sửa: src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
-- Dòng chính sau sửa: 80-113
-- Cách sửa: không spawn lại cùng `NPC` object nữa. Khi bot chết, code lưu tên/vị trí, `destroy()` NPC cũ, sau 10 ticks tạo NPC mới cùng tên + metadata + trait rồi spawn lại.
-- Lý do: spawn lại cùng NPC giữ cùng Minecraft UUID, trong khi entity cũ vẫn còn trong Moonrise EntityLookup. NPC mới có UUID sạch nên không đụng UUID cũ.
-- Đã chạy `./gradlew compileJava`: PASS, 0 errors, 8 deprecation warnings.
-- Đã chạy `./build.sh`: PASS, 0 errors, JAR mới tại `build/libs/PvPBotPaper-1.0.0.jar`.
-- Bổ sung sau yêu cầu fix warnings: đã thay toàn bộ `broadcastMessage(String)` bằng Adventure `Component` broadcast và đổi Gradle flatDir dependencies sang single-string notation.
-- Đã chạy lại `./gradlew compileJava`, `./gradlew build --warning-mode all`, `./build.sh`: PASS, 0 errors, 0 deprecation warnings trong output.
-- Bổ sung tiếp: bot chết sẽ respawn tại vị trí spawn gốc đã cache trong `NPCSpawnEvent`; bỏ death message giả lập và bỏ leave message giả lập, chỉ giữ join message khi spawn/respawn.
-
-==========================================================
-🛡️ --- CÁC LỖI CẦN XỬ LÝ ---
-==========================================================
-- [ ] Lỗi 1: Bot bị kill xong biến mất luôn dù đã delay 10 ticks.
-- [ ] Lỗi 2: Respawn handler bỏ qua kết quả `NPC.spawn(finalLoc)`, fail spawn không có log, không có fallback.
-- [ ] Lỗi 3: Death handler có thể truyền `null` vào `NPC.spawn(finalLoc)`.
-- [ ] Lỗi 4: Thứ tự `entity.remove()` rồi `despawn()` rồi `spawn()` trên cùng NPC có rủi ro làm Citizens state lệch sau death.
-- [ ] Lỗi 5: Bot không được reset máu/food/fire/invulnerability sau respawn.
-- [ ] Lỗi 6: Death message chỉ ghi console, không broadcast cho player trong game.
-- [ ] Lỗi 7: `PvPBotTrait` thiếu metadata `DAMAGE_BY_PLAYER` theo AGENTS.md, nhưng Citizens jar hiện tại cũng không có enum này.
-- [ ] Lỗi 8: `PvPBotTrait` spam log mỗi 100 tick cho mọi bot, dễ làm console/log lag khi spawn nhiều bot.
-- [ ] Lỗi 9: `SafeLocationFinder` thiếu null guard cho `Location`/`World`.
-- [ ] Lỗi 10: `SafeLocationFinder` coi một số block nguy hiểm là nền hợp lệ.
-- [ ] Lỗi 11: `/pvpbot spawn <name>` báo "Spawned" kể cả khi spawn thật sự fail.
-- [ ] Lỗi 12: `/pvpbot spawn <name>` không validate chuẩn tên Minecraft player.
-- [ ] Lỗi 13: Random name generator có thể trả tên đã trùng sau 100 attempts.
-- [ ] Lỗi 14: `removeall` batch path không broadcast "left the game" từng bot, khác behavior path <=20.
-- [ ] Lỗi 15: `removeall` batch giữ sender object trong runnable, có thể dùng sender đã offline/invalid sau nhiều tick.
-- [ ] Lỗi 16: Root `plugin.yml` lệch với `src/main/resources/plugin.yml`.
-- [ ] Lỗi 17: Build có 7 Java deprecation warnings.
-- [ ] Lỗi 18: Build có 4 Gradle deprecation warnings, sẽ lỗi ở Gradle 10.
-
-==========================================================
-📂 --- NHỮNG FILE ĐÃ QUÉT ---
-==========================================================
-Các file/thư mục đã đọc/quét sâu:
+Đã đọc/quét:
 - AGENTS.md
 - README.md
 - build.gradle
+- settings.gradle
+- gradle.properties
 - build.sh
-- plugin.yml
+- release.sh
+- push.sh
+- .github/workflows/build.yml
+- .github/workflows/release.yml
 - src/main/resources/plugin.yml
 - src/main/java/com/khoablabla/pvpbot/PvPBot.java
 - src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
 - src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
 - src/main/java/com/khoablabla/pvpbot/traits/PvPBotTrait.java
+- src/main/java/com/khoablabla/pvpbot/combat/CombatTargetSelector.java
+- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
+- src/main/java/com/khoablabla/pvpbot/movement/BotMovementController.java
 - src/main/java/com/khoablabla/pvpbot/utils/SafeLocationFinder.java
-- libs/citizens.jar API qua `javap`
-- build/libs/PvPBotPaper-1.0.0.jar contents/plugin.yml
 
-Lệnh kiểm tra đã chạy:
+Lệnh đã chạy:
 - `./build.sh`
-- `./gradlew build --warning-mode all`
-- `rg` static scan trên `src`
-- `javap` Citizens `NPC`, `NPC$Metadata`, `NPCDeathEvent`
-- `jar tf build/libs/PvPBotPaper-1.0.0.jar`
-- `unzip -p build/libs/PvPBotPaper-1.0.0.jar plugin.yml`
+- `rg` static scan trên source/scripts
+- `find src/test -type f -print`
 
 Kết quả build:
-- Compile/build: PASS, 0 errors.
-- Unit tests: NO-SOURCE.
-- Static scan trong build.sh: PASS.
-- Java warnings: 7 warnings.
-- Gradle warnings: 4 warnings.
+- `./build.sh`: PASS
+- Compile: PASS, 0 errors
+- Unit tests: NO-SOURCE
+- build.sh static scan: 0 warnings
+- JAR tạo được: `build/libs/PvPBotPaper-1.0.0.jar`
 
 ==========================================================
-💾 --- CÁC FILE ĐÃ SỬA ---
+🛡️ --- CÁC LỖI CẦN XỬ LÝ ---
 ==========================================================
-Các file đã sửa:
-- codex-report.md
-
-Ở các dòng nào (chỉ ghi số dòng):
-- Toàn file
-
-Nhu the nao:
-- Chỉ ghi audit report theo yêu cầu.
-- Không sửa bất kỳ file production nào trong `src/`.
-- Không sửa `report.md`.
-- Không chạy hoặc sửa `sign.py`.
+- [ ] Lỗi 1: Bot tự động đánh người chơi chỉ vì đứng gần, không cần người chơi đánh trước.
+- [ ] Lỗi 2: Bot không kiểm tra line-of-sight nên có thể chọn target sau tường/vật cản.
+- [ ] Lỗi 3: Không có trạng thái revenge/aggro; bot không biết "ai đánh mình thì mới đánh lại".
+- [ ] Lỗi 4: Khi không có target, bot cancel navigation rồi đứng im hoàn toàn, không idle/wander/guard.
+- [ ] Lỗi 5: Bot có thể target mọi LivingEntity, gồm mob và PvPBot khác, vì không lọc Citizens NPC/bot.
+- [ ] Lỗi 6: Movement gọi `setTarget(target, true)` mỗi tick, dễ làm navigator bị reset liên tục.
+- [ ] Lỗi 7: B-hop dùng `setVelocity(new Vector(0, 0.42, 0))`, xóa vận tốc ngang và tạo cảm giác bot bị khựng/đóng băng.
+- [ ] Lỗi 8: Critical jump dùng velocity thô trong attack loop, có thể làm bot bay/nhảy theo người chơi khi sát target.
+- [ ] Lỗi 9: Attack controller chỉ đánh khi velocity Y âm; nếu trạng thái rơi không xảy ra đúng lúc, bot giữ `jumpTriggered` và không đánh.
+- [ ] Lỗi 10: Attack dùng damage số cố định, không tính vũ khí, giáp, enchant, cooldown combat thật.
+- [ ] Lỗi 11: Bot không xoay mặt/aim về target trước khi đánh.
+- [ ] Lỗi 12: OnSpawn thiếu metadata `DAMAGE_BY_PLAYER` theo AGENTS.md.
+- [ ] Lỗi 13: Bot chết được broadcast lại "joined the game", trái yêu cầu chỉ join một lần khi spawn.
+- [ ] Lỗi 14: Death handler luôn tạo NPC thay thế sau khi chết, không có setting/policy "bot chết thì không join lại".
+- [ ] Lỗi 15: Respawn dùng lại spawn location cũ rồi remove cache theo old NPC id; vòng đời id mới dễ khó quản lý khi bot chết nhiều lần.
+- [ ] Lỗi 16: Spawn fail không báo lỗi cho người chơi trong nhiều nhánh command.
+- [ ] Lỗi 17: Custom name validation quá yếu, có thể tạo tên dài/sai chuẩn Minecraft.
+- [ ] Lỗi 18: SafeLocationFinder cho phép đứng trong một số block nguy hiểm non-solid.
+- [ ] Lỗi 19: Project không có unit/integration test; build PASS không chứng minh hành vi trong game.
+- [ ] Lỗi 20: Release workflow tìm `*-reobf.jar` nhưng Gradle build hiện không tạo file reobf.
+- [ ] Lỗi 21: README/spec mô tả rất nhiều lệnh và hệ thống chưa tồn tại trong code hiện tại.
 
 ==========================================================
-🔍 --- DEBUG / ROOT CAUSE CHO LỖI BOT CHẾT RỒI BIẾN MẤT ---
+⚠️ --- CHI TIẾT LỖI THEO FILE / DÒNG ---
 ==========================================================
-Lỗi chính:
-- [/] Bot chết rồi biến mất: có delay 10 tick thật, nhưng logic respawn chưa an toàn.
-
+1. HIGH - Bot tự đánh khi người chơi đến gần, không cần bị khiêu khích.
 File nào:
-- src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
-
+- src/main/java/com/khoablabla/pvpbot/traits/PvPBotTrait.java
+- src/main/java/com/khoablabla/pvpbot/combat/CombatTargetSelector.java
 Ở dòng nào:
-- 57-58
-- 63-68
-- 71-85
-- Đặc biệt: 76-83
-
-Vì sao lỗi mạnh:
-- Dòng 76 lấy lại `finalNpc.getEntity()` sau khi NPC đã chết. Tại thời điểm task chạy sau 10 ticks, Citizens/Paper có thể đã clear entity hoặc entity đang ở state removed/dead.
-- Dòng 78 gọi `entity.remove()` trực tiếp trên entity của Citizens. Đây là thao tác Bukkit-level, không phải Citizens lifecycle-level. Sau đó dòng 81 mới gọi `finalNpc.despawn()`. Thứ tự này có thể làm Citizens nghĩ NPC đã despawn hoặc mất entity handle không đúng cách.
-- Dòng 83 gọi `finalNpc.spawn(finalLoc)` nhưng không check boolean return. Nếu spawn fail, code không log gì, không retry, không destroy/recreate NPC. Kết quả nhìn trong game là bot biến mất luôn.
-- Dòng 72 cho phép `finalLoc` là null. Nếu `npc.getStoredLocation()` và entity location fallback đều không có, dòng 83 có thể spawn với null location.
-
-Điểm cần sửa:
-- Lấy death location sớm từ `bukkitEvent.getEntity().getLocation().clone()`.
-- Không dùng location mutable trực tiếp.
-- Despawn theo Citizens lifecycle trước, hoặc destroy/recreate NPC nếu Citizens không hỗ trợ respawn lại ổn định sau death.
-- Check `boolean spawned = finalNpc.spawn(finalLoc);`.
-- Nếu `spawned == false`, log warning rõ NPC name/id/location và cleanup/retry an toàn.
-- Sau spawn thành công, reset health/fireTicks/fallDistance/noDamageTicks nếu entity là `Player`.
-
-==========================================================
-⚠️ --- CÁC LỖI PHÁT SINH KHÁC KHÔNG TRONG DANH SÁCH OR TRONG CODE NGẦM ---
-==========================================================
-1. Respawn không check return value.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
-Ở dòng nào:
-- 83
+- PvPBotTrait.java:64-70
+- CombatTargetSelector.java:24-40
 Ảnh hưởng:
-- HIGH. Đây là nguyên nhân trực tiếp khiến bot "mất luôn" nếu Citizens spawn fail.
+- Bot cứ mỗi 10 tick tự quét entity gần nhất trong 16 block rồi chase/attack.
 Hệ quả:
-- Không log lỗi, không retry, không còn entity trong world.
+- Đúng triệu chứng "khi tôi đến gần nó đánh"; logic hiện tại là auto-hostile proximity AI, không phải revenge AI.
 
-2. Respawn location có thể null.
+2. HIGH - Không có revenge/provocation state.
 File nào:
 - src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
+- src/main/java/com/khoablabla/pvpbot/traits/PvPBotTrait.java
 Ở dòng nào:
-- 63-72, 83
+- PlayerSimulationListener.java:38-123
+- PvPBotTrait.java:20-24, 61-75
 Ảnh hưởng:
-- HIGH. `finalLoc` không được validate trước khi spawn.
+- Không listener nào bắt `EntityDamageByEntityEvent` để nhớ attacker.
+- Trait chỉ có `target`, không có `lastDamager`, timeout aggro, hay owner/faction command state.
 Hệ quả:
-- Spawn fail hoặc runtime exception tùy Citizens/Paper implementation.
+- Không thể làm hành vi "thằng nào đánh mình thì nhắm thằng đó đánh" bằng code hiện tại.
 
-3. Thứ tự remove/despawn/spawn rủi ro cao.
+3. HIGH - Không kiểm tra tầm nhìn.
 File nào:
-- src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
+- src/main/java/com/khoablabla/pvpbot/combat/CombatTargetSelector.java
 Ở dòng nào:
-- 76-83
+- 24-39
 Ảnh hưởng:
-- HIGH. `entity.remove()` bypass một phần lifecycle Citizens.
+- Chỉ dựa vào nearby entities và distanceSquared.
 Hệ quả:
-- Citizens registry/NPC entity handle có thể lệch với entity thật trong world.
+- Bot có thể lock/chase target sau tường, dưới/sau block, hoặc nơi không nhìn thấy.
 
-4. Không reset trạng thái sống sau respawn.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
-Ở dòng nào:
-- 83
-Ảnh hưởng:
-- MEDIUM/HIGH. Player NPC có thể respawn với state xấu hoặc chết lại ngay.
-Hệ quả:
-- Bot vừa respawn có thể không đứng được, chết lại, hoặc bị client/server state không đồng bộ.
-
-5. Death message không broadcast in-game.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
-Ở dòng nào:
-- 61
-Ảnh hưởng:
-- LOW/MEDIUM. Chỉ console thấy message.
-Hệ quả:
-- Người chơi tưởng không có death event hoặc respawn event.
-
-6. Thiếu `DAMAGE_BY_PLAYER` theo AGENTS.md.
+4. MEDIUM - Khi không có target bot đứng im/cancel navigation.
 File nào:
 - src/main/java/com/khoablabla/pvpbot/traits/PvPBotTrait.java
 Ở dòng nào:
-- 38-39
+- 71-74
 Ảnh hưởng:
-- MEDIUM. Code mới chỉ `setProtected(false)` và `DAMAGE_OTHERS`.
+- Không có idle/wander/path/guard state.
 Hệ quả:
-- Theo tiêu chuẩn dự án thì chưa đủ đảm bảo bot vulnerable.
-Ghi chú:
-- `javap libs/citizens.jar net.citizensnpcs.api.npc.NPC$Metadata` không thấy enum `DAMAGE_BY_PLAYER`. Có thể AGENTS.md đang lệch version Citizens, hoặc cần API khác của Citizens version hiện tại.
+- Đúng triệu chứng "không có ai trong tầm mắt thì nó đứng im luôn, không biết gì luôn".
 
-7. Log spam mỗi 100 tick mỗi bot.
+5. HIGH - Bot target cả mob và PvPBot khác.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/combat/CombatTargetSelector.java
+Ở dòng nào:
+- 25-30
+Ảnh hưởng:
+- Dòng 27 trả `true` cho mọi non-player LivingEntity.
+- Không dùng `CitizensAPI.getNPCRegistry().isNPC(e)` để loại NPC khác.
+Hệ quả:
+- PvPBot có thể đánh mob, armor stand living-like entity nếu có, hoặc đánh nhau với bot khác ngoài ý muốn.
+
+6. MEDIUM/HIGH - Navigator bị set target lại mỗi tick.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/movement/BotMovementController.java
+Ở dòng nào:
+- 15-19
+Ảnh hưởng:
+- `npc.getNavigator().setTarget(target, true)` được gọi mỗi tick khi có target.
+Hệ quả:
+- Citizens pathfinder có thể bị reset liên tục, gây giật, đứng khựng, hoặc khó xử lý stuck state.
+
+7. HIGH - B-hop xóa vận tốc ngang.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/movement/BotMovementController.java
+Ở dòng nào:
+- 20-29
+Ảnh hưởng:
+- `setVelocity(new Vector(0, 0.42, 0))` thay toàn bộ velocity bằng vector chỉ có Y.
+Hệ quả:
+- Bot đang chạy sẽ mất X/Z velocity, nhìn giống bị đóng băng rồi nhảy lên.
+
+8. HIGH - Critical jump có thể làm bot bay/nhảy bất thường.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
+Ở dòng nào:
+- 38-47
+Ảnh hưởng:
+- Khi trong 3 block và hết cooldown, bot tự set velocity Y = 0.42 để crit.
+- Không check onGround, liquid, ladder, web, fall distance, jump cooldown vật lý, knockback, hay trạng thái đang navigation.
+Hệ quả:
+- Đúng triệu chứng "nó đánh rồi nó bay luôn", "tôi nhảy lên nó nhảy theo".
+
+9. MEDIUM/HIGH - Attack có thể bị kẹt `jumpTriggered`.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
+Ở dòng nào:
+- 14-16, 31-47
+Ảnh hưởng:
+- Sau khi jump, code chỉ đánh nếu `botPlayer.getVelocity().getY() < 0`.
+- Nếu target vẫn trong range nhưng velocity Y không âm theo timing server/Citizens, bot không strike và `jumpTriggered` có thể giữ true.
+Hệ quả:
+- Bot có thể chỉ nhảy/treo nhịp đánh, gây cảm giác đơ.
+
+10. MEDIUM - Damage cố định, bỏ qua combat thật.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
+Ở dòng nào:
+- 18-22, 54-60
+Ảnh hưởng:
+- Damage luôn là 2.0 hoặc 4.0, không dựa vào item, attack cooldown, armor, enchant, potion, shield, axe.
+Hệ quả:
+- PvP không giống player thật; balance và anti-cheat/event behavior có thể lệch.
+
+11. MEDIUM - Bot không aim/rotate về target trước khi đánh.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
+- src/main/java/com/khoablabla/pvpbot/movement/BotMovementController.java
+Ở dòng nào:
+- MeleeAttackController.java:24-61
+- BotMovementController.java:15-30
+Ảnh hưởng:
+- Không có yaw/pitch/lookAt trước `swingMainHand()` và `damage()`.
+Hệ quả:
+- Bot có thể đánh trúng dù nhìn hướng khác, rất "ảo".
+
+12. MEDIUM - Thiếu `DAMAGE_BY_PLAYER` theo luật dự án.
 File nào:
 - src/main/java/com/khoablabla/pvpbot/traits/PvPBotTrait.java
 Ở dòng nào:
-- 53-62
+- 43-47
 Ảnh hưởng:
-- MEDIUM khi nhiều bot. 50 bot = khoảng 10 log/giây.
+- Code có `npc.setProtected(false)` và `DAMAGE_OTHERS`, nhưng thiếu `npc.data().set(NPC.Metadata.DAMAGE_BY_PLAYER, true);` như AGENTS.md bắt buộc.
 Hệ quả:
-- Console noise, disk log tăng nhanh, giảm hiệu năng khi mass spawn.
+- Tùy version Citizens, bot có thể không nhận damage từ player đúng như kỳ vọng hoặc lệch chuẩn dự án.
 
-8. `SafeLocationFinder` thiếu null guard.
+13. HIGH - Bot chết vẫn phát "joined the game".
+File nào:
+- src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
+Ở dòng nào:
+- 91-122, đặc biệt 120
+Ảnh hưởng:
+- Mỗi lần bot chết và replacement spawn thành công, server broadcast `botName + " joined the game"`.
+Hệ quả:
+- Trái yêu cầu "khi spawn bot thì 1 lần join game thôi, khi chết không join nữa".
+
+14. HIGH - Death handler luôn respawn/rejoin bằng NPC mới.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
+Ở dòng nào:
+- 63-123
+Ảnh hưởng:
+- Không có setting `bot-leave-on-death`, không có policy "death = stop", không phân biệt kill thật với manual remove.
+Hệ quả:
+- Bot chết luôn được tạo replacement nếu có location hợp lệ.
+
+15. MEDIUM - Cache spawn location theo NPC id dễ lệch vòng đời.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
+Ở dòng nào:
+- 32, 44, 71, 94-100
+Ảnh hưởng:
+- Old id bị remove ở dòng 71, replacement có id mới và phụ thuộc `NPCSpawnEvent` để cache lại.
+Hệ quả:
+- Nếu spawn event không chạy như kỳ vọng hoặc replacement spawn fail, thông tin respawn gốc mất.
+
+16. MEDIUM - Spawn fail im lặng trong command.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
+Ở dòng nào:
+- 63-69
+- 72-85
+- 96-99
+- 115-120
+- 124-137
+Ảnh hưởng:
+- `spawnSingleBot` trả false nhưng nhiều nhánh không báo rõ nguyên nhân cho player.
+Hệ quả:
+- Người dùng chỉ thấy không có bot, khó biết do unsafe location hay Citizens spawn fail.
+
+17. MEDIUM - Custom name validation yếu.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
+Ở dòng nào:
+- 87-95
+- 104-114
+Ảnh hưởng:
+- Chỉ chặn `<` và `>`.
+Hệ quả:
+- Có thể nhập tên quá dài, có space/ký tự màu/ký tự đặc biệt, gây lỗi tablist/profile/remove name.
+
+18. MEDIUM - Safe location chưa chặn đủ hazardous block ở feet/head.
 File nào:
 - src/main/java/com/khoablabla/pvpbot/utils/SafeLocationFinder.java
 Ở dòng nào:
-- 14-16, 29, 39-42
+- 11-15
+- 51-58
+- 61-68
 Ảnh hưởng:
-- MEDIUM. Nếu origin hoặc world null, crash NPE.
+- HAZARDOUS_BLOCKS chỉ check block bên dưới.
+- Feet/head chỉ check non-solid và liquid, nên các block nguy hiểm non-solid có thể lọt.
 Hệ quả:
-- Command spawn có thể fail cứng thay vì trả false.
+- Bot có thể spawn trong fire/soul fire/berry bush/nether portal/powder snow tùy block state, rồi kẹt hoặc chết.
 
-9. Safe spawn support block chưa đủ an toàn.
+19. MEDIUM - Không có test source.
 File nào:
-- src/main/java/com/khoablabla/pvpbot/utils/SafeLocationFinder.java
-Ở dòng nào:
-- 55-58
-Ảnh hưởng:
-- MEDIUM. Chỉ loại lava/fire ở block dưới, không loại cactus, magma, campfire, berry bush, powder snow, portal, void hazard, liquid feet/head.
-Hệ quả:
-- Bot có thể spawn ở vị trí gây damage/kẹt/chết lại.
-
-10. Spawn một bot fail vẫn báo thành công cho player.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
-Ở dòng nào:
-- 61-67
-- 84-98
-Ảnh hưởng:
-- MEDIUM. `player.sendMessage("Spawned ...")` chạy ngoài check success.
-Hệ quả:
-- Người dùng thấy báo spawned nhưng không có bot.
-
-11. Tên custom không validate chuẩn Minecraft/Citizens.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
-Ở dòng nào:
-- 84-98
-- 102-118
-- 122-130
-Ảnh hưởng:
-- MEDIUM. Chỉ chặn `<` và `>`, không chặn dài >16, space, ký tự màu, ký tự đặc biệt, tên quá ngắn.
-Hệ quả:
-- Tablist/skin/profile/command targeting có thể lỗi hoặc hành vi lạ.
-
-12. Random name vẫn có thể trùng.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
-Ở dòng nào:
-- 155-173
-Ảnh hưởng:
-- LOW/MEDIUM. Sau 100 attempts, function trả name hiện tại dù còn trùng.
-Hệ quả:
-- Có thể spawn nhiều bot cùng tên, remove/tab complete khó đoán.
-
-13. `removeall` batch không broadcast từng bot left message.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
-Ở dòng nào:
-- 233-246
-Ảnh hưởng:
-- LOW/MEDIUM. Behavior không nhất quán với path <=20 ở dòng 221-228.
-Hệ quả:
-- Người chơi không thấy từng bot leave khi remove số lượng lớn.
-
-14. `removeall` batch giữ `sender` trong delayed runnable.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
-Ở dòng nào:
-- 231-246
-Ảnh hưởng:
-- LOW/MEDIUM. Nếu player logout trước khi batch xong, vẫn giữ sender object.
-Hệ quả:
-- Message cuối có thể không tới nơi; giữ reference không cần thiết.
-
-15. Root `plugin.yml` lệch file resource thật.
-File nào:
-- plugin.yml
-- src/main/resources/plugin.yml
-Ở dòng nào:
-- plugin.yml:1-6
-- src/main/resources/plugin.yml:8-12
-Ảnh hưởng:
-- LOW. JAR hiện đóng gói đúng `src/main/resources/plugin.yml`, root file thiếu command.
-Hệ quả:
-- Dễ deploy nhầm root `plugin.yml` hoặc audit nhầm metadata.
-
-16. Java deprecation warnings.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
-Ở dòng nào:
-- 64, 79, 95, 115, 184, 207, 224
-Ảnh hưởng:
-- LOW hiện tại, tăng rủi ro tương lai.
-Hệ quả:
-- `Bukkit.getServer().broadcastMessage(String)` deprecated; Paper khuyến nghị Component API.
-
-17. Gradle deprecation warnings.
-File nào:
+- src/test
 - build.gradle
 Ở dòng nào:
-- 16, 17, 23, 24
+- build.gradle:24, 32-34
 Ảnh hưởng:
-- MEDIUM tương lai.
+- Gradle khai báo JUnit nhưng `find src/test -type f -print` không có file nào.
 Hệ quả:
-- Gradle 10 sẽ fail: repository `url '...'` syntax và dependency multi-string notation `compileOnly name:`.
+- Build PASS không bắt được bug AI, respawn, movement, command behavior.
 
-18. `application` plugin không cần thiết cho Bukkit plugin.
+20. HIGH - Release workflow có thể fail vì jar reobf không tồn tại.
 File nào:
+- .github/workflows/release.yml
 - build.gradle
 Ở dòng nào:
-- 3
+- release.yml:36-40
+- build.gradle:1-3, 42-56
 Ảnh hưởng:
-- LOW.
+- Workflow copy `build/libs/*-reobf.jar`, nhưng project chỉ dùng plugin `java`, không có paperweight/reobf task.
+- Build hiện tạo `build/libs/PvPBotPaper-1.0.0.jar`.
 Hệ quả:
-- Build tạo `distTar`, `distZip`, scripts app không cần cho Paper plugin.
+- GitHub release có thể fail tại bước rename jar.
+
+21. MEDIUM - README/spec lệch xa code thật.
+File nào:
+- README.md
+- src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
+Ở dòng nào:
+- README.md:198-375
+- PvPBotCommand.java:41-54, 274-300
+Ảnh hưởng:
+- README liệt kê settings GUI, factions, kits, paths, ranged, mace, dashboard, nhiều command.
+- Code command hiện chỉ có `spawn`, `remove`, `removeall`.
+Hệ quả:
+- Người test sẽ tưởng có tính năng nhưng plugin chưa implement.
+
+22. LOW/MEDIUM - `release.sh` tự sửa source trước khi release mà không sync Gradle version.
+File nào:
+- release.sh
+- build.gradle
+- gradle.properties
+Ở dòng nào:
+- release.sh:90-96
+- build.gradle:5-6
+- gradle.properties:1-2
+Ảnh hưởng:
+- Script chỉ sửa `src/main/resources/plugin.yml`, không sửa version trong Gradle.
+Hệ quả:
+- Tên jar vẫn theo version Gradle cũ, metadata source có thể lệch.
+
+23. LOW - Root có class files/manifest rời ngoài build output.
+File nào:
+- net/citizensnpcs/api/ai/Navigator.class
+- net/citizensnpcs/api/ai/NavigatorParameters.class
+- META-INF/MANIFEST.MF
+Ở dòng nào:
+- Không áp dụng, là binary file ở root.
+Ảnh hưởng:
+- File binary rời nằm ngoài `build/` và `libs/`.
+Hệ quả:
+- Dễ nhầm là source/runtime artifact cần đóng gói, làm repo bẩn và audit khó hơn.
 
 ==========================================================
-📋 --- HƯỚNG DẪN KIỂM THỬ (TEST CASES) ---
+🎯 --- KẾT LUẬN THEO TRIỆU CHỨNG BẠN BÁO ---
+==========================================================
+Triệu chứng: "khi tôi đến gần nó đánh".
+- Nguyên nhân chính: PvPBotTrait.java:64-70 + CombatTargetSelector.java:24-40.
+- Code hiện là auto-target theo khoảng cách, không phải bị đánh mới trả đũa.
+
+Triệu chứng: "bot bị đóng băng, đánh rồi bay, tôi nhảy lên nó nhảy theo".
+- Nguyên nhân chính: BotMovementController.java:20-29 và MeleeAttackController.java:38-47.
+- Cả movement và crit đều dùng `setVelocity` thô, thiếu check onGround/state.
+
+Triệu chứng: "không có ai trong tầm mắt thì đứng im".
+- Nguyên nhân chính: PvPBotTrait.java:71-74.
+- Không có idle behavior.
+
+Triệu chứng: "spawn bot thì join 1 lần thôi, chết không join nữa".
+- Nguyên nhân chính: PlayerSimulationListener.java:91-122, đặc biệt 120.
+- Death respawn đang broadcast joined game mỗi lần replacement spawn.
+
+==========================================================
+📋 --- TEST CASES ĐỀ XUẤT CHO A3 / HUMAN ---
 ==========================================================
 Lệnh cần gõ:
 - `./build.sh`
-- Start Paper 1.21.11 server với Citizens + PvPBot jar mới.
-- Trong game: `/pvpbot spawn TestBot`
-- Kill bot bằng kiếm/bow/lava/fall.
-- Quan sát console trong 20 ticks sau death.
+- Start Paper 1.21.11 với Citizens + PvPBot jar.
+- `/pvpbot spawn TestBot`
+- `/pvpbot spawn 5`
+- `/pvpbot removeall`
 
-Trình tự các bước thực hiện:
-- Spawn 1 bot tên cố định.
-- Kill bot.
-- Đợi ít nhất 1 giây.
-- Kiểm tra bot có entity thật trong world không.
-- Kiểm tra console có warning/error không.
-- Lặp lại 5 lần liên tục.
-- Test thêm `/pvpbot spawn 50`, kill nhiều bot liên tục, sau đó `/pvpbot removeall`.
-
-Các trường hợp kiểm thử:
-- Bot respawn sau đúng 10 ticks.
-- Không có `Entity uuid already exists`.
-- Không có spawn fail im lặng.
-- Bot sau respawn có 20 health, không cháy, không chết lại ngay.
-- `/pvpbot remove <name>` remove đúng bot sau respawn.
-- Player mới join sau bot respawn vẫn thấy bot/tablist.
-- Spawn fail phải báo fail, không được báo "Spawned".
+Các case cần test trong game:
+- Đứng gần bot nhưng không đánh: bot không được tự target/đánh nếu mục tiêu là revenge-only.
+- Đánh bot một hit: bot phải lock đúng người vừa đánh trong thời gian aggro timeout.
+- Đứng sau tường trong 16 block: bot không được target nếu không có line-of-sight.
+- Nhảy trước mặt bot: bot không được spam nhảy/bay theo người chơi.
+- Bot đánh cận chiến: không được khựng mất vận tốc ngang.
+- Không có target: bot phải idle theo design mới, hoặc đứng guard có chủ ý, không cancel loạn navigator.
+- Kill bot: không broadcast "joined the game" lần nữa nếu yêu cầu là chỉ join một lần khi spawn.
+- Spawn fail ở vị trí không an toàn: player phải nhận message lỗi rõ.
+- Release workflow: xác nhận artifact name đúng, không phụ thuộc `*-reobf.jar` nếu project chưa dùng paperweight.
 
 ==========================================================
 📊 --- TỔNG QUAN ---
 ==========================================================
 - Build hiện tại: PASS, 0 compile errors.
-- Lỗi nghiêm trọng nhất: `PlayerSimulationListener.java:76-83`.
-- Kết luận cho câu "tôi kill 1 bot sau đó nó biến mất luôn, tôi cho là 10 tick rồi mà":
-  - 10 tick có chạy ở dòng 85.
-  - Nhưng sau 10 tick, code gọi `entity.remove()` + `despawn()` + `spawn(finalLoc)` không kiểm tra spawn success.
-  - Nếu Citizens không spawn lại được sau death hoặc `finalLoc` xấu/null, bot sẽ mất luôn và không có log báo nguyên nhân.
-- Lỗi chưa sửa: tất cả lỗi trên mới được audit, chưa sửa code production.
-- Tỷ lệ audit hoàn thành: **100%**
+- Static scan của build.sh: PASS, 0 warnings.
+- Unit tests: không có test nào.
+- Số lỗi/cảnh báo audit thủ công: 23.
+- Lỗi nghiêm trọng nhất liên quan gameplay: auto-target không revenge-only, velocity jump thô, respawn broadcast join.
+- Không sửa production code trong `src/`.
+- Không sửa `report.md`.
+- Không chạy hoặc sửa `sign.py`.
+- File đã ghi: `codex-report.md`.
+- Tỷ lệ hoàn thành audit: **100%**
