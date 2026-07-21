@@ -32,13 +32,27 @@ public class MeleeAttackController {
 
         if (jumpTicks >= 0) {
             jumpTicks++;
+
+            // Ticks 0-4: Ascending phase — do NOT check for landing
+            // Tick 5: Execute crit strike at apex
             if (jumpTicks == 5) {
                 executeStrike(botPlayer, target, true);
             }
-            if (jumpTicks >= 8) {
+
+            // Ticks 5+: Descending phase — check for landing only if falling
+            if (jumpTicks > 4 && botPlayer.getVelocity().getY() <= 0.0) {
+                if (botPlayer.isOnGround() || botPlayer.getLocation().subtract(0, 0.2, 0).getBlock().isSolid()) {
+                    jumpTicks = -1;
+                    cooldownTicks = SWORD_COOLDOWN;
+                }
+            }
+
+            // Absolute timeout safety net
+            if (jumpTicks >= 12) {
                 jumpTicks = -1;
                 cooldownTicks = SWORD_COOLDOWN;
             }
+
             return;
         }
 
@@ -48,7 +62,7 @@ public class MeleeAttackController {
         if (cooldownTicks > 0) return;
 
         if (criticalsEnabled) {
-            Location below = botPlayer.getLocation().subtract(0, 0.01, 0);
+            Location below = botPlayer.getLocation().subtract(0, 0.1, 0);
             if (!below.getBlock().isSolid()) return;
 
             Vector currentVel = botPlayer.getVelocity();

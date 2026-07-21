@@ -130,6 +130,7 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
         npc.data().set(NPC.Metadata.REMOVE_FROM_TABLIST, false);
         npc.data().set(NPC.Metadata.NAMEPLATE_VISIBLE, true);
         npc.addTrait(PvPBotTrait.class);
+        npc.getOrAddTrait(net.citizensnpcs.trait.Gravity.class);
         if (!npc.spawn(safeLocation)) {
             npc.destroy();
             return false;

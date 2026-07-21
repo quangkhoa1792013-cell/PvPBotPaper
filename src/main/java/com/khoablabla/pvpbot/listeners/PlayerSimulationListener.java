@@ -65,6 +65,11 @@ public class PlayerSimulationListener implements Listener {
         if (!npc.hasTrait(PvPBotTrait.class)) return;
 
         EntityDeathEvent bukkitEvent = event.getEvent();
+        org.bukkit.entity.Entity deadEntity = bukkitEvent.getEntity();
+        if (deadEntity != null) {
+            deadEntity.remove();
+        }
+
         String botName = npc.getName();
 
         Location respawnLocation = spawnLocations.remove(npc.getId());
@@ -95,6 +100,7 @@ public class PlayerSimulationListener implements Listener {
                 replacement.data().set(NPC.Metadata.REMOVE_FROM_TABLIST, false);
                 replacement.data().set(NPC.Metadata.NAMEPLATE_VISIBLE, true);
                 replacement.addTrait(PvPBotTrait.class);
+                replacement.getOrAddTrait(net.citizensnpcs.trait.Gravity.class);
 
                 boolean spawned = replacement.spawn(finalLoc);
                 if (!spawned) {

@@ -1,4 +1,4 @@
-// Phase 3: Core Melee Combat AI — Pursuit Navigation, Bunny Hop & Idle Wander
+// Phase 3: Core Melee Combat AI — Pursuit Navigation & Idle Wander
 package com.khoablabla.pvpbot.movement;
 
 import net.citizensnpcs.api.npc.NPC;
@@ -6,7 +6,6 @@ import net.citizensnpcs.api.npc.NPC;
 import org.bukkit.Location;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.util.Vector;
 
 import com.khoablabla.pvpbot.utils.SafeLocationFinder;
 
@@ -14,27 +13,20 @@ import java.util.Random;
 
 public class BotMovementController {
 
-    private int lastBHopTick = 0;
     private final Random random = new Random();
 
     public void handleMovement(NPC npc, LivingEntity target, int currentTick, boolean isJumping) {
         if (npc.getEntity() == null) return;
 
-        if (isJumping) return;
+        if (isJumping) {
+            if (npc.getNavigator().isNavigating()) {
+                npc.getNavigator().cancelNavigation();
+            }
+            return;
+        }
 
         npc.getNavigator().setTarget(target, true);
-
-        if (!(npc.getEntity() instanceof Player botPlayer)) return;
-        if (currentTick - lastBHopTick < 20) return;
-        lastBHopTick = currentTick;
-
-        if (botPlayer.getLocation().distance(target.getLocation()) <= 5.0) return;
-
-        Location below = botPlayer.getLocation().subtract(0, 0.01, 0);
-        if (below.getBlock().isSolid()) {
-            Vector currentVel = botPlayer.getVelocity();
-            botPlayer.setVelocity(new Vector(currentVel.getX(), 0.42, currentVel.getZ()));
-        }
+        npc.getNavigator().getLocalParameters().speedModifier(1.5F);
     }
 
     public void handleIdleWander(NPC npc) {
