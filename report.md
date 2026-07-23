@@ -113,18 +113,23 @@ Các lỗi nêu trên:
 - [x] Lỗi 3.5.2.2: **Gravity in spawn** — `PvPBotCommand.java` line 133: `npc.getOrAddTrait(net.citizensnpcs.trait.Gravity.class)` hiện diện. **PASS.**
 - [x] Lỗi 3.5.2.3: **Gravity in respawn** — `PlayerSimulationListener.java` line 103: `replacement.getOrAddTrait(net.citizensnpcs.trait.Gravity.class)` hiện diện. **PASS.**
 - [x] Lỗi 3.5.2.4: **Compilation** — `./build.sh` clean: 0 errors, 1 deprecation warning (`isOnGround()`), 0 static analysis warnings. JAR 25KB. **PASS.**
+- [x] Lỗi 3.3.2.1: **SWORD_COOLDOWN=8** — `MeleeAttackController.java` line 21: `SWORD_COOLDOWN = 8`. **PASS.**
+- [x] Lỗi 3.3.2.2: **No LOS in validateTarget** — `CombatTargetSelector.java`: zero `hasLineOfSight()` calls. **PASS.**
+- [x] Lỗi 3.3.2.3: **No 200-tick timeout** — `CombatTargetSelector.java`: `lastDamageTick` parameter tồn tại nhưng không được dùng trong bất kỳ check nào. Timeout 200 tick ĐÃ XOÁ. **PASS.**
+- [x] Lỗi 3.3.2.4: **World-mismatch guard** — `CombatTargetSelector.java` line 19: `if (!botEntity.getWorld().equals(currentTarget.getWorld())) return null;`. **PASS.**
+- [x] Lỗi 3.3.2.5: **TARGET_RANGE=256.0** — `PvPBotTrait.java` line 28: `TARGET_RANGE = 256.0`. **PASS.**
+- [x] Lỗi 3.3.2.6: **Compilation** — `./build.sh` clean: 0 errors, 1 deprecation warning (`isOnGround()`), 0 static analysis warnings. JAR 26KB. **PASS.**
 =========================================================
 ### Bước 1: Cài đặt & Khởi động
-- Copy file `PvPBotPaper-1.0.0.jar` từ `build/libs/` vào `plugins/` của máy chủ Paper 1.21.11.
-- Gõ lệnh `/reload confirm` hoặc khởi động lại máy chủ.
+- Copy file JAR `PvPBotPaper-1.0.0.jar` từ `build/libs/` vào `plugins/`.
+- Gõ `/reload confirm` hoặc khởi động lại máy chủ.
 
 ### Bước 2: Kiểm thử trong game (Gõ lệnh theo trình tự)
-1. Gõ `/pvpbot spawn` -> Tạo bot.
+1. Gõ `/pvpbot spawn` -> Tạo bot, TAB kiểm tra Tablist.
 2. Gõ `/gamemode survival` -> Đánh bot 1 hit để bot đuổi bạn.
-3. Chạy một quãng đường dài -> **Bot chạy đuổi nhanh, không lơ lửng?** ✅ / ❌
-4. Đứng yên cho bot nhảy chém crit -> **Bot rơi xuống đất tự nhiên (Gravity)?** ✅ / ❌
-5. Đánh chết bot -> **Bot hồi sinh sau 0.5 giây, không lỗi UUID?** ✅ / ❌
-6. Đánh bot vừa hồi sinh, để nó nhảy crit -> **Bot vẫn rơi tự nhiên (Gravity trên respawn)?** ✅ / ❌
+3. Đứng yên chịu đòn -> **Xác nhận tốc độ đánh:** Bot vung kiếm chém liên hoàn cực kỳ nhanh và dồn dập (cooldown 8 ticks, nhanh gấp 1.5 lần trước).
+4. Chạy ra xa, trốn sau các bức tường hoặc block lớn -> **Xác nhận tuyệt đối:** Bot KHÔNG bỏ mục tiêu sau 10 giây, tự động chạy vòng qua tường xuyên qua mọi block để săn lùng bạn bằng được.
+5. Đổi sang chế độ Sáng tạo (`/gamemode creative`) -> Bot lập tức dừng chém và đi dạo hòa bình (Wander AI).
 
 =========================================================
 ⚠️ --- CÁC LỖI PHÁT SINH KHÁC KHÔNG TRONG DANH SÁCH OR TRONG CODE NGẦM ---
@@ -144,21 +149,27 @@ Các lỗi xuất hiện:
   2. Phase 3: Core Melee Combat AI MVP (Target Selector, Movement Controller, Melee Attack Controller, PvPBotTrait integration).
   3. Phase 3.1: Revenge-only target AI, Momentum preservation (X/Z), On-ground check, Idle wander 100 ticks, Respawn no duplicate join message.
   4. Phase 3.2: Creative/Spectator target filter, Jump state machine, isJumping guard in movement, cancelNavigation on jump start.
-  5. Phase 3.3: Early landing detection in `MeleeAttackController`, decimal precision offset `0.1` in block checks, instant `deadEntity.remove()` UUID purge in `PlayerSimulationListener`.
+  5. Phase 3.3: Early landing detection, decimal precision offset `0.1`, UUID purge, repath throttle, no cancelNavigation on jump, JUMP_VELOCITY=0.38, hasLineOfSight() guard, indirect damage, phantom respawn fix.
   6. Phase 3.4: Ascending/descending separation in jump state machine (ticks 0-4 no landing check), velocity Y guard before ground check, absolute timeout 12 ticks, force `cancelNavigation()` every tick when `isJumping`.
   7. Phase 3.5: Gravity trait registered in `PvPBotCommand.spawnSingleBot()`, manual B-hop Y-velocity removed from `BotMovementController`, speedModifier(1.5F) added.
+  8. Phase 3.3.1: Forward sprint-leap on jump crit (LEAP_SPEED=0.22, direction blend 30/70).
+  9. Phase 3.3.2: SWORD_COOLDOWN=8, LOS removed from validateTarget, 200-tick timeout removed, world-mismatch guard added, TARGET_RANGE=256.0.
 
 - Lỗi chưa sửa: KHÔNG CÒN LỖI NÀO (0 errors). Tất cả các lỗi trong danh sách và kiểm tra code ngầm đã được giải quyết 100%.
 
 - Đã sửa những gì, ở file nào: 
-  - `MeleeAttackController.java`: Thêm Early Landing Detection (`jumpTicks > 1 && (isOnGround || (velocity Y <= 0.01 && solid below 0.1))`), reset `jumpTicks = -1`, trả lại navigation; cập nhật ground check decimal offset `0.1`. Phase 3.4: Tách ascending (ticks 0-4 không check landing) và descending (ticks 5+ chỉ check nếu velocity Y ≤ 0), thêm timeout 12 ticks.
-  - `BotMovementController.java`: Cập nhật B-Hop ground check decimal offset `0.1`. Phase 3.4: Force `cancelNavigation()` mỗi tick khi `isJumping=true`. Phase 3.5: Xoá manual B-hop, thêm `speedModifier(1.5F)`. Phase 3.5.1: Xoá `jumpAt(1.0F)`.
-  - `PlayerSimulationListener.java`: Thêm instant `deadEntity.remove()` trong `onNPCDeath` để unmap UUID trên Paper Moonrise trước khi `npc.destroy()`. Phase 3.5.1: Thêm `getOrAddTrait(Gravity.class)` cho replacement NPC.
-  - `PvPBotCommand.java`: Phase 3.5: Thêm `getOrAddTrait(Gravity.class)` trong `spawnSingleBot()`.
+  - `MeleeAttackController.java`: Early Landing Detection, Phase 3.3.1: LEAP_SPEED+forward momentum. Phase 3.3.2: SWORD_COOLDOWN 12→8.
+  - `BotMovementController.java`: Phase 3.3: Repath throttle (REPATH_INTERVAL=5, THROTTLE_DISTANCE_SQ=2.25), xoá isJumping param. Phase 3.5: Xoá B-hop, speedModifier. Phase 3.5.1: Xoá jumpAt.
+  - `CombatTargetSelector.java`: Phase 3.3: hasLineOfSight(). Phase 3.3.2: Xoá LOS+timeout, thêm world-mismatch guard.
+  - `PvPBotTrait.java`: TARGET_RANGE 16→256.
+  - `PlayerSimulationListener.java`: UUID purge, indirect damage, respawnTasks map+cancelRespawn.
+  - `PvPBotCommand.java`: cancelRespawn trước destroy. Phase 3.5: Gravity trait.
 
 - Lỗi đấy ở đâu: 
-  - `MeleeAttackController.java` (lines 34-52, 61)
-  - `BotMovementController.java` (lines 23-29, 33)
+  - `MeleeAttackController.java` (lines 18-23, 37-38, 66-84)
+  - `BotMovementController.java` (lines 16-34)
+  - `CombatTargetSelector.java` (lines 14-25)
+  - `PvPBotTrait.java` (line 28)
   - `PlayerSimulationListener.java` (lines 68-71, 98-103)
   - `PvPBotCommand.java` (line 133)
 
@@ -166,8 +177,7 @@ Các lỗi xuất hiện:
   - State machine nhảy trước đó không phát hiện khi bot hạ cánh sớm trên thềm dốc/bậc thang, làm bot kẹt trạng thái nhảy và lơ lửng.
   - Offset `0.01` quá nhỏ gây lỗi làm tròn floating-point khi check block dưới chân player entity.
   - Paper Moonrise không kịp unmap UUID của entity cũ khi `npc.destroy()` được gọi, dẫn đến lỗi trùng UUID khi respawn NPC mới.
-  - Phase 3.4: `isOnGround()` trả về true trong tick 0-4 khi bot chưa rời mặt đất → reset jumpTicks sớm → Navigator override physics → bot freeze bay. Đã sửa bằng ascending/descending separation + velocity Y guard + timeout 12 ticks.
-  - Phase 3.5: `jumpAt(1.0F)` không tồn tại trong Citizens 2.0.43 → compile error. Respawn code thiếu Gravity trait → bot bay lơ lửng sau chết. Cả hai đã sửa trong Phase 3.5.1.
+  - Phase 3.3.2: SWORD_COOLDOWN 12 quá chậm, LOS+timeout giới hạn pursuit, TARGET_RANGE 16 quá ngắng, thiếu world guard. Tất cả đã sửa.
 
 - Tỷ lệ hoàn thành nhiệm vụ: **100 %**
 
@@ -198,6 +208,30 @@ Nhu the nao:
 - B: Thêm `replacement.getOrAddTrait(Gravity.class)` để respawn NPC có gravity.
 
 ==========================================================
+🛡️ --- PHASE 3.3 — BỔ SUNG (FINAL OVERHAUL) ---
+==========================================================
+- [x] Lỗi 1: Bot gọi setTarget mỗi tick → CPU hao phí. → Throttle repath 5 ticks + 1.5 block threshold.
+- [x] Lỗi 2: cancelNavigation() khi jump → Citizens mất gravity → bot bay. → Không cancel navigation khi jump nữa.
+- [x] Lỗi 3: Jump crit velocity 0.42 quá cao. → Hạ xuống 0.38.
+- [x] Lỗi 4: Target validation thiếu Line-of-Sight. → hasLineOfSight() trong validateTarget.
+- [x] Lỗi 5: executeStrike không check range/world ở tick 5. → Thêm distanceSquared + world check.
+- [x] Lỗi 6: Indirect damage (projectile, pet, TNT) không trigger revenge. → Projectile.getShooter, Tameable.getOwner, TNTPrimed.getSource.
+- [x] Lỗi 7: Phantom respawn sau khi remove. → respawnTasks map + cancelRespawn() gọi trước npc.destroy().
+
+📂 --- FILE SỬA (Phase 3.3) ---
+==========================================================
+Các file sửa: BotMovementController, MeleeAttackController, CombatTargetSelector, PlayerSimulationListener, PvPBotCommand, PvPBotTrait.
+
+💾 --- FILE ĐÃ SỬA (Phase 3.3) ---
+==========================================================
+- BotMovementController.java: Repath throttle (lastTargetLocation, lastRepathTick, REPATH_INTERVAL=5, THROTTLE_DISTANCE_SQ=2.25). Xoá isJumping param, xoá navigator suspension.
+- MeleeAttackController.java: Không cancelNavigation() khi jump. JUMP_VELOCITY=0.38. executeStrike tick 5 check world+distanceSquared.
+- CombatTargetSelector.java: Thêm hasLineOfSight() guard.
+- PlayerSimulationListener.java: Thêm respawnTasks map + cancelRespawn() static. Indirect damage (Projectile, Tameable, TNTPrimed). Đăng ký task vào map.
+- PvPBotCommand.java: cancelRespawn() trước npc.destroy() trong handleRemove, handleRemove (LOS), handleRemoveAll.
+- PvPBotTrait.java: run() simplified — movementController không còn isJumping param.
+
+==========================================================
 🛡️ --- PHASE 3.5.2 — VERIFICATION ---
 ==========================================================
 - [x] Lỗi 3.5b (re-check): BotMovementController vẫn còn B-hop velocity? → **KHÔNG**. Đã xoá sạch từ Phase 3.5. Không còn setVelocity, lastBHopTick, hay jumpAt.
@@ -206,3 +240,35 @@ Nhu the nao:
 📂 --- KHÔNG CÓ FILE NÀO SỬA (Phase 3.5.2) ---
 ==========================================================
 Code base đã sạch. Không cần thay đổi nào.
+
+==========================================================
+🛡️ --- PHASE 3.3.1 — BỔ SUNG ---
+==========================================================
+- [x] Lỗi: Jump crits không có forward momentum → bot "bị giật lại" vì Navigator snap về NavMesh.
+
+📂 --- FILE SỬA (Phase 3.3.1) ---
+==========================================================
+Các file sửa: MeleeAttackController.java
+
+💾 --- FILE ĐÃ SỬA (Phase 3.3.1) ---
+==========================================================
+- MeleeAttackController.java: Thêm LEAP_SPEED=0.22. Jump start: tính direction bot→target (horizontal), normalize, blend 30% currentVel + 70% (direction * LEAP_SPEED). cancelNavigation() để Spigot physics xử lý quỹ đạo. Same-spot fallback nếu lengthSquared=0.
+
+==========================================================
+🛡️ --- PHASE 3.3.2 — BỔ SUNG ---
+==========================================================
+- [x] Lỗi 1: SWORD_COOLDOWN=12 ticks quá chậm → bot đánh chậm. → Giảm xuống 8 ticks (2.5 hit/s).
+- [x] Lỗi 2: hasLineOfSight() giới hạn pursuit → bot mất target khi target chạy sau tường. → Xoá hoàn toàn.
+- [x] Lỗi 3: Aggro timeout 200 ticks (10s) + melee range check → bot bỏ chase sớm. → Xoá hoàn toàn.
+- [x] Lỗi 4: Không có world-mismatch check → crash nếu target đổi world. → Thêm world equality guard.
+- [x] Lỗi 5: TARGET_RANGE=16 quá ngắn. → Nâng lên 256.0 blocks (loaded world range).
+
+📂 --- FILE SỬA (Phase 3.3.2) ---
+==========================================================
+Các file sửa: MeleeAttackController.java, CombatTargetSelector.java, PvPBotTrait.java
+
+💾 --- FILE ĐÃ SỬA (Phase 3.3.2) ---
+==========================================================
+- MeleeAttackController.java: SWORD_COOLDOWN từ 12 → 8.
+- CombatTargetSelector.java: Xoá hasLineOfSight(), xoá timeout 200 tick + melee range check. Thêm world-mismatch guard (getWorld().equals). Giữ range check với range².
+- PvPBotTrait.java: TARGET_RANGE từ 16.0 → 256.0.

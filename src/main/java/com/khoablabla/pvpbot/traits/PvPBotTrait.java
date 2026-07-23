@@ -1,6 +1,7 @@
 // Phase 1: Citizens Trait Base Lifecycle
 // Phase 2: Tablist & Player Simulation
 // Phase 3: Core Melee Combat AI Integration
+// Phase 3.3: Simplified tick sequence — no isJumping coordination
 package com.khoablabla.pvpbot.traits;
 
 import net.citizensnpcs.api.npc.NPC;
@@ -24,7 +25,7 @@ public class PvPBotTrait extends Trait {
     private LivingEntity target = null;
     private final BotMovementController movementController = new BotMovementController();
     private final MeleeAttackController attackController = new MeleeAttackController();
-    private static final double TARGET_RANGE = 16.0;
+    private static final double TARGET_RANGE = 256.0;
 
     public PvPBotTrait() {
         super("pvpbot");
@@ -82,7 +83,7 @@ public class PvPBotTrait extends Trait {
 
         if (target != null && !target.isDead() && target.isValid()) {
             attackController.handleAttack(npc, target);
-            movementController.handleMovement(npc, target, tickCounter, attackController.isJumping());
+            movementController.handleMovement(npc, target, tickCounter);
             idleTickCounter = 0;
         } else {
             target = null;

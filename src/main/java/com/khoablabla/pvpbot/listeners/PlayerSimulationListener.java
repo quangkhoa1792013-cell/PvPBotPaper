@@ -1,10 +1,11 @@
-// Phase 2.4: Real Player Join, Leave, Death Announcements & 10-tick Respawn Loop
+// Phase 3.3: Indirect Damage Revenge Tracking & Phantom Respawn Prevention
 package com.khoablabla.pvpbot.listeners;
 
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.event.NPCDeathEvent;
 import net.citizensnpcs.api.event.NPCSpawnEvent;
 import net.citizensnpcs.api.npc.NPC;
+
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -12,6 +13,9 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
+import org.bukkit.entity.TNTPrimed;
+import org.bukkit.entity.Tameable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -19,6 +23,7 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 import com.khoablabla.pvpbot.traits.PvPBotTrait;
 
@@ -27,11 +32,19 @@ import java.util.Map;
 
 public class PlayerSimulationListener implements Listener {
 
+    private static final Map<Integer, BukkitTask> respawnTasks = new HashMap<>();
     private final JavaPlugin plugin;
     private final Map<Integer, Location> spawnLocations = new HashMap<>();
 
     public PlayerSimulationListener(JavaPlugin plugin) {
         this.plugin = plugin;
+    }
+
+    public static void cancelRespawn(int npcId) {
+        BukkitTask task = respawnTasks.remove(npcId);
+        if (task != null) {
+            task.cancel();
+        }
     }
 
     @EventHandler
@@ -64,6 +77,9 @@ public class PlayerSimulationListener implements Listener {
         NPC npc = event.getNPC();
         if (!npc.hasTrait(PvPBotTrait.class)) return;
 
+        int oldId = npc.getId();
+        cancelRespawn(oldId);
+
         EntityDeathEvent bukkitEvent = event.getEvent();
         org.bukkit.entity.Entity deadEntity = bukkitEvent.getEntity();
         if (deadEntity != null) {
@@ -88,13 +104,14 @@ public class PlayerSimulationListener implements Listener {
             return;
         }
 
-        int oldId = npc.getId();
         npc.destroy();
 
         final Location finalLoc = respawnLocation;
-        new BukkitRunnable() {
+        BukkitTask task = new BukkitRunnable() {
             @Override
             public void run() {
+                respawnTasks.remove(oldId);
+
                 NPC replacement = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, botName);
                 replacement.data().set(NPC.Metadata.REMOVE_FROM_PLAYERLIST, false);
                 replacement.data().set(NPC.Metadata.REMOVE_FROM_TABLIST, false);
@@ -121,14 +138,26 @@ public class PlayerSimulationListener implements Listener {
                     player.setFallDistance(0.0F);
                     player.setNoDamageTicks(10);
                 }
-
             }
         }.runTaskLater(plugin, 10);
+        respawnTasks.put(oldId, task);
     }
 
     @EventHandler
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        if (!(event.getDamager() instanceof Player attacker)) return;
+        Player attacker = null;
+
+        if (event.getDamager() instanceof Player p) {
+            attacker = p;
+        } else if (event.getDamager() instanceof Projectile proj && proj.getShooter() instanceof Player p) {
+            attacker = p;
+        } else if (event.getDamager() instanceof Tameable tame && tame.getOwner() instanceof Player p) {
+            attacker = p;
+        } else if (event.getDamager() instanceof TNTPrimed tnt && tnt.getSource() instanceof Player p) {
+            attacker = p;
+        }
+
+        if (attacker == null) return;
         if (attacker.getGameMode() == GameMode.CREATIVE || attacker.getGameMode() == GameMode.SPECTATOR) return;
         if (!CitizensAPI.getNPCRegistry().isNPC(event.getEntity())) return;
         NPC npc = CitizensAPI.getNPCRegistry().getNPC(event.getEntity());

@@ -1,383 +1,400 @@
 ┌────────────────────────────────────────────────────────┐
 │             🎮 PvPBot — Deep Codex Audit Report         │
-│  Audit-only report: không sửa src/, không chạy sign.py  │
+│  Audit-only: đã đọc source, chạy build, không sửa src/  │
 └────────────────────────────────────────────────────────┘
 
 ==========================================================
 🔎 --- PHẠM VI QUÉT ---
 ==========================================================
+Thời điểm quét:
+- 2026-07-23 15:06 +07
+
 Đã đọc/quét:
-- AGENTS.md
-- README.md
 - build.gradle
-- settings.gradle
-- gradle.properties
 - build.sh
-- release.sh
-- push.sh
-- .github/workflows/build.yml
-- .github/workflows/release.yml
+- README.md
 - src/main/resources/plugin.yml
 - src/main/java/com/khoablabla/pvpbot/PvPBot.java
-- src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
-- src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
 - src/main/java/com/khoablabla/pvpbot/traits/PvPBotTrait.java
-- src/main/java/com/khoablabla/pvpbot/combat/CombatTargetSelector.java
-- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
 - src/main/java/com/khoablabla/pvpbot/movement/BotMovementController.java
+- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
+- src/main/java/com/khoablabla/pvpbot/combat/CombatTargetSelector.java
+- src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
+- src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
 - src/main/java/com/khoablabla/pvpbot/utils/SafeLocationFinder.java
 
 Lệnh đã chạy:
-- `./build.sh`
-- `rg` static scan trên source/scripts
-- `find src/test -type f -print`
+- ./build.sh
+- rg static scan các điểm: cancelNavigation, setTarget, setVelocity, damage, metadata Citizens, speedModifier
+- javap Citizens NPC/NPC.Metadata để đối chiếu metadata đang dùng
 
 Kết quả build:
-- `./build.sh`: PASS
-- Compile: PASS, 0 errors
+- ./build.sh: PASS
+- compileJava: PASS
 - Unit tests: NO-SOURCE
-- build.sh static scan: 0 warnings
-- JAR tạo được: `build/libs/PvPBotPaper-1.0.0.jar`
+- Static scan trong build.sh: 0 warnings
+- JAR tạo được: build/libs/PvPBotPaper-1.0.0.jar
+- Cảnh báo compile: MeleeAttackController.java:44 dùng Player#isOnGround() deprecated
+
+Kết luận nhanh:
+- Không thấy lỗi cú pháp/build.
+- Lỗi chính là logic movement/combat runtime: bot tự hủy navigation khi nhảy crit, sau đó setTarget lại mỗi tick, gây giật/khựng/nhảy đoạn. Khi bị đánh có knockback thật của server cộng thêm setVelocity nhảy crit, bot rất dễ trông như "bay", rồi đi chậm hoặc chase không tự nhiên.
 
 ==========================================================
 🛡️ --- CÁC LỖI CẦN XỬ LÝ ---
 ==========================================================
-- [ ] Lỗi 1: Bot tự động đánh người chơi chỉ vì đứng gần, không cần người chơi đánh trước.
-- [ ] Lỗi 2: Bot không kiểm tra line-of-sight nên có thể chọn target sau tường/vật cản.
-- [ ] Lỗi 3: Không có trạng thái revenge/aggro; bot không biết "ai đánh mình thì mới đánh lại".
-- [ ] Lỗi 4: Khi không có target, bot cancel navigation rồi đứng im hoàn toàn, không idle/wander/guard.
-- [ ] Lỗi 5: Bot có thể target mọi LivingEntity, gồm mob và PvPBot khác, vì không lọc Citizens NPC/bot.
-- [ ] Lỗi 6: Movement gọi `setTarget(target, true)` mỗi tick, dễ làm navigator bị reset liên tục.
-- [ ] Lỗi 7: B-hop dùng `setVelocity(new Vector(0, 0.42, 0))`, xóa vận tốc ngang và tạo cảm giác bot bị khựng/đóng băng.
-- [ ] Lỗi 8: Critical jump dùng velocity thô trong attack loop, có thể làm bot bay/nhảy theo người chơi khi sát target.
-- [ ] Lỗi 9: Attack controller chỉ đánh khi velocity Y âm; nếu trạng thái rơi không xảy ra đúng lúc, bot giữ `jumpTriggered` và không đánh.
-- [ ] Lỗi 10: Attack dùng damage số cố định, không tính vũ khí, giáp, enchant, cooldown combat thật.
-- [ ] Lỗi 11: Bot không xoay mặt/aim về target trước khi đánh.
-- [ ] Lỗi 12: OnSpawn thiếu metadata `DAMAGE_BY_PLAYER` theo AGENTS.md.
-- [ ] Lỗi 13: Bot chết được broadcast lại "joined the game", trái yêu cầu chỉ join một lần khi spawn.
-- [ ] Lỗi 14: Death handler luôn tạo NPC thay thế sau khi chết, không có setting/policy "bot chết thì không join lại".
-- [ ] Lỗi 15: Respawn dùng lại spawn location cũ rồi remove cache theo old NPC id; vòng đời id mới dễ khó quản lý khi bot chết nhiều lần.
-- [ ] Lỗi 16: Spawn fail không báo lỗi cho người chơi trong nhiều nhánh command.
-- [ ] Lỗi 17: Custom name validation quá yếu, có thể tạo tên dài/sai chuẩn Minecraft.
-- [ ] Lỗi 18: SafeLocationFinder cho phép đứng trong một số block nguy hiểm non-solid.
-- [ ] Lỗi 19: Project không có unit/integration test; build PASS không chứng minh hành vi trong game.
-- [ ] Lỗi 20: Release workflow tìm `*-reobf.jar` nhưng Gradle build hiện không tạo file reobf.
-- [ ] Lỗi 21: README/spec mô tả rất nhiều lệnh và hệ thống chưa tồn tại trong code hiện tại.
+- [ ] Lỗi 1: Combat jump cancel navigation làm bot khựng khi đánh.
+- [ ] Lỗi 2: Movement setTarget(target, true) mỗi tick, reset Citizens navigator liên tục.
+- [ ] Lỗi 3: Attack chạy trước movement trong cùng tick, nên sau khi bật jump thì movement lại cancel navigation ngay.
+- [ ] Lỗi 4: Bot dùng setVelocity để nhảy crit nhưng không quản trị vận tốc ngang/knockback nên dễ tạo cảm giác bay hoặc nhảy đoạn.
+- [ ] Lỗi 5: Trong lúc jumpTicks >= 0, bot không kiểm tra lại khoảng cách/line-of-sight trước khi gây damage ở tick 5.
+- [ ] Lỗi 6: Critical strike dùng damage số cố định, bỏ qua item, armor, enchant, cooldown combat thật.
+- [ ] Lỗi 7: Không có aim/face target trước khi đánh.
+- [ ] Lỗi 8: OnSpawn thiếu NPC.Metadata.DAMAGE_BY_PLAYER theo luật AGENTS.md.
+- [ ] Lỗi 9: Target revenge timeout không được refresh khi bot đánh trúng hoặc tiếp tục bị đánh nhiều kiểu không phải Player trực tiếp.
+- [ ] Lỗi 10: Bot chỉ trả đũa Player trực tiếp; projectile, potion, TNT, pet, mob hoặc nguồn sát thương gián tiếp không được xử lý.
+- [ ] Lỗi 11: Bot có thể mất target sau 10 giây nếu bị knockback ra xa hơn 3 block, tạo cảm giác đuổi chậm/ngắt quãng.
+- [ ] Lỗi 12: Idle/chase không chống stuck, không đổi path khi navigator kẹt.
+- [ ] Lỗi 13: Respawn destroy NPC cũ rồi tạo NPC mới, có nguy cơ mất state và làm quản lý id khó ổn định.
+- [ ] Lỗi 14: spawnLocations remove theo old NPC id; replacement id mới chỉ được put lại nếu NPCSpawnEvent chạy đúng.
+- [ ] Lỗi 15: Removeall theo batch vẫn có thể bị death respawn task cũ tạo lại bot sau khi xóa.
+- [ ] Lỗi 16: Spawn fail không báo nguyên nhân cho người chơi.
+- [ ] Lỗi 17: Name validation còn yếu, không giới hạn ký tự chuẩn và không trim name.
+- [ ] Lỗi 18: SafeLocationFinder coi nhiều block non-solid là an toàn, có thể spawn/wander vào block gây lỗi hành vi.
+- [ ] Lỗi 19: Không có test tự động nào; build PASS không chứng minh AI chạy đúng trong game.
+- [ ] Lỗi 20: README/spec mô tả nhiều hệ thống chưa có trong code: GUI, kit, faction, ranged, path, dashboard, config.
 
 ==========================================================
-⚠️ --- CHI TIẾT LỖI THEO FILE / DÒNG ---
+🔥 --- LỖI CHÍNH GÂY TRIỆU CHỨNG "ĐÁNH NÓ THÌ NÓ NHẢY/BAY, ĐI CHẬM, RỒI ĐẾN ĐÁNH" ---
 ==========================================================
-1. HIGH - Bot tự đánh khi người chơi đến gần, không cần bị khiêu khích.
+1. CRITICAL - Bot hủy navigation trong lúc nhảy crit.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
+- src/main/java/com/khoablabla/pvpbot/movement/BotMovementController.java
+- src/main/java/com/khoablabla/pvpbot/traits/PvPBotTrait.java
+Ở dòng nào:
+- MeleeAttackController.java:68-71
+- BotMovementController.java:21-25
+- PvPBotTrait.java:83-85
+Lỗi như nào:
+- Khi bot đủ tầm đánh, code setVelocity Y = 0.42 để nhảy crit rồi gọi npc.getNavigator().cancelNavigation().
+- Ngay sau đó PvPBotTrait vẫn gọi movementController.handleMovement(..., attackController.isJumping()).
+- Vì isJumping() true, BotMovementController lại cancelNavigation tiếp và return.
+Ảnh hưởng:
+- Bot mất path Citizens trong toàn bộ thời gian jumpTicks.
+- Người chơi nhìn thấy bot dừng/khựng, bật lên, sau đó mới path lại.
+Hệ quả:
+- Rất khớp triệu chứng: "đánh nó thì nó nhảy 1 đoạn", "di chuyển kiểu bay", "cực chậm", "rồi đến đánh tôi".
+Mức độ:
+- CRITICAL.
+Hướng sửa đề xuất:
+- Không cancel navigator mỗi lần nhảy crit nếu không thật sự cần.
+- Tách state combat jump khỏi state pathfinding: bot vẫn chase/strafe bình thường, chỉ jump khi đang on-ground và đang thật sự trong melee range.
+- Nếu phải cancel, chỉ cancel một lần khi chuyển state, không cancel mỗi tick.
+
+2. HIGH - setTarget(target, true) được gọi mỗi tick, dễ reset navigator/path.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/movement/BotMovementController.java
+Ở dòng nào:
+- BotMovementController.java:28-29
+Lỗi như nào:
+- handleMovement gọi npc.getNavigator().setTarget(target, true) mỗi tick khi có target.
+- Citizens navigator thường cần thời gian để path; setTarget lặp lại quá dày có thể làm đường đi bị reset/không ổn định.
+Ảnh hưởng:
+- Bot chase không mượt, có cảm giác khựng, quay đầu, đổi path liên tục.
+Hệ quả:
+- Khi kết hợp với cancelNavigation lúc jump, hành vi càng giống teleport nhỏ/nhảy đoạn rồi đi chậm.
+Mức độ:
+- HIGH.
+Hướng sửa đề xuất:
+- Chỉ setTarget khi target đổi, khi navigator không chạy, hoặc theo interval 5-10 tick.
+- Cache target id/location cuối; chỉ repath khi target dịch chuyển đủ xa.
+- Set speedModifier trước hoặc một lần khi spawn/enter combat, không cần spam mỗi tick.
+
+3. HIGH - setVelocity nhảy crit không kiểm soát knockback và vận tốc ngang.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
+Ở dòng nào:
+- MeleeAttackController.java:68-70
+Lỗi như nào:
+- Code giữ X/Z velocity hiện tại và ép Y velocity = 0.42.
+- Nếu bot vừa bị người chơi đánh, server/Citizens có thể đã áp knockback X/Z. Bot sẽ mang knockback đó cộng với jump Y, nhìn như bị bay.
+- Sau đó navigator bị cancel nên không có path kéo lại mượt.
+Ảnh hưởng:
+- Bot bị bật lùi/bật ngang rồi treo state jump vài tick.
+Hệ quả:
+- Hiện tượng "khi tôi đánh nó thì nó lại nhảy một đoạn rồi di chuyển kiểu bay".
+Mức độ:
+- HIGH.
+Hướng sửa đề xuất:
+- Chỉ jump crit khi bot đang on-ground, không vừa nhận knockback lớn, và horizontal velocity nằm dưới ngưỡng.
+- Clamp X/Z velocity khi chủ động jump crit.
+- Không dùng jump crit liên tục nếu target không đứng trong tầm ổn định.
+
+4. HIGH - Trong state jump, bot vẫn đánh ở tick 5 mà không re-check range/LOS.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
+Ở dòng nào:
+- MeleeAttackController.java:33-40
+- MeleeAttackController.java:78-84
+Lỗi như nào:
+- Khi jumpTicks == 5, executeStrike được gọi trực tiếp.
+- Không kiểm tra lại target còn trong 3.5 block không.
+- Không kiểm tra target cùng world, còn valid, còn line-of-sight.
+Ảnh hưởng:
+- Bot có thể gây damage khi vừa bị knockback hoặc target đã lùi khỏi range ngắn.
+Hệ quả:
+- Combat nhìn không tự nhiên: bot bay/nhảy rồi vẫn đánh trúng.
+Mức độ:
+- HIGH.
+Hướng sửa đề xuất:
+- Trước executeStrike: validate target valid, same world, distance <= ATTACK_RANGE, line-of-sight nếu muốn PvP thật.
+
+5. MEDIUM - Logic landing dùng API deprecated và block check chưa chuẩn.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
+Ở dòng nào:
+- MeleeAttackController.java:43-44
+Lỗi như nào:
+- Player#isOnGround() deprecated.
+- botPlayer.getLocation().subtract(0, 0.2, 0) tạo Location tạm đã bị mutate; hiện không phá state bot nhưng check block ở -0.2 không đủ chuẩn cho slab, stair, carpet, snow layer, water, cobweb.
+Ảnh hưởng:
+- jumpTicks có thể kết thúc sai hoặc timeout tới 12 tick.
+Hệ quả:
+- Bot có thể đứng khựng lâu hơn cần thiết sau cú nhảy.
+Mức độ:
+- MEDIUM.
+Hướng sửa đề xuất:
+- Dùng điều kiện grounded ổn định hơn từ Bukkit/Paper hoặc bounding box/support block helper riêng.
+
+==========================================================
+⚠️ --- LỖI NGẦM / XUNG ĐỘT LOGIC KHÁC ---
+==========================================================
+6. HIGH - Thiếu metadata DAMAGE_BY_PLAYER theo AGENTS.md.
+File nào:
+- src/main/java/com/khoablabla/pvpbot/traits/PvPBotTrait.java
+Ở dòng nào:
+- PvPBotTrait.java:53-57
+Lỗi như nào:
+- Code có npc.setProtected(false) và NPC.Metadata.DAMAGE_OTHERS.
+- AGENTS.md bắt buộc thêm npc.data().set(NPC.Metadata.DAMAGE_BY_PLAYER, true).
+- Trong citizens.jar hiện tại javap không thấy enum DAMAGE_BY_PLAYER, nên rule AGENTS.md có thể lệch version Citizens hiện tại hoặc đang nhắc API khác.
+Ảnh hưởng:
+- Nếu runtime Citizens/Paper khác với jar local, khả năng bot không nhận damage player đúng như kỳ vọng.
+Hệ quả:
+- Cần A2/A3 xác minh trên đúng Citizens server đang chạy, không chỉ jar libs/citizens.jar.
+Mức độ:
+- HIGH vì là rule bắt buộc của dự án, dù build hiện tại vẫn PASS.
+Hướng sửa đề xuất:
+- Xác nhận Citizens version runtime.
+- Nếu metadata DAMAGE_BY_PLAYER có ở runtime API mới, cập nhật libs/citizens.jar và thêm đúng metadata.
+- Nếu không có, ghi rõ thay thế hợp lệ của version hiện tại.
+
+7. MEDIUM - Target timeout không refresh theo combat thực tế.
 File nào:
 - src/main/java/com/khoablabla/pvpbot/traits/PvPBotTrait.java
 - src/main/java/com/khoablabla/pvpbot/combat/CombatTargetSelector.java
 Ở dòng nào:
-- PvPBotTrait.java:64-70
-- CombatTargetSelector.java:24-40
+- PvPBotTrait.java:33-37
+- CombatTargetSelector.java:22-23
+Lỗi như nào:
+- lastDamageTick chỉ update khi setTarget(newTarget) được gọi từ damage event.
+- Nếu bot đang đuổi lâu hơn 200 tick và target ngoài 3 block, validateTarget trả null.
 Ảnh hưởng:
-- Bot cứ mỗi 10 tick tự quét entity gần nhất trong 16 block rồi chase/attack.
+- Sau khi bị đánh văng hoặc target chạy xa, bot có thể bỏ chase đột ngột.
 Hệ quả:
-- Đúng triệu chứng "khi tôi đến gần nó đánh"; logic hiện tại là auto-hostile proximity AI, không phải revenge AI.
+- Người chơi thấy bot lúc đuổi, lúc ngắt, rồi lại chỉ đánh khi bị hit lại.
+Mức độ:
+- MEDIUM.
+Hướng sửa đề xuất:
+- Đổi tên lastDamageTick thành lastAggroTick và refresh khi bot nhìn thấy target, nhận damage tiếp, hoặc có combat interaction hợp lệ.
 
-2. HIGH - Không có revenge/provocation state.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
-- src/main/java/com/khoablabla/pvpbot/traits/PvPBotTrait.java
-Ở dòng nào:
-- PlayerSimulationListener.java:38-123
-- PvPBotTrait.java:20-24, 61-75
-Ảnh hưởng:
-- Không listener nào bắt `EntityDamageByEntityEvent` để nhớ attacker.
-- Trait chỉ có `target`, không có `lastDamager`, timeout aggro, hay owner/faction command state.
-Hệ quả:
-- Không thể làm hành vi "thằng nào đánh mình thì nhắm thằng đó đánh" bằng code hiện tại.
-
-3. HIGH - Không kiểm tra tầm nhìn.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/combat/CombatTargetSelector.java
-Ở dòng nào:
-- 24-39
-Ảnh hưởng:
-- Chỉ dựa vào nearby entities và distanceSquared.
-Hệ quả:
-- Bot có thể lock/chase target sau tường, dưới/sau block, hoặc nơi không nhìn thấy.
-
-4. MEDIUM - Khi không có target bot đứng im/cancel navigation.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/traits/PvPBotTrait.java
-Ở dòng nào:
-- 71-74
-Ảnh hưởng:
-- Không có idle/wander/path/guard state.
-Hệ quả:
-- Đúng triệu chứng "không có ai trong tầm mắt thì nó đứng im luôn, không biết gì luôn".
-
-5. HIGH - Bot target cả mob và PvPBot khác.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/combat/CombatTargetSelector.java
-Ở dòng nào:
-- 25-30
-Ảnh hưởng:
-- Dòng 27 trả `true` cho mọi non-player LivingEntity.
-- Không dùng `CitizensAPI.getNPCRegistry().isNPC(e)` để loại NPC khác.
-Hệ quả:
-- PvPBot có thể đánh mob, armor stand living-like entity nếu có, hoặc đánh nhau với bot khác ngoài ý muốn.
-
-6. MEDIUM/HIGH - Navigator bị set target lại mỗi tick.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/movement/BotMovementController.java
-Ở dòng nào:
-- 15-19
-Ảnh hưởng:
-- `npc.getNavigator().setTarget(target, true)` được gọi mỗi tick khi có target.
-Hệ quả:
-- Citizens pathfinder có thể bị reset liên tục, gây giật, đứng khựng, hoặc khó xử lý stuck state.
-
-7. HIGH - B-hop xóa vận tốc ngang.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/movement/BotMovementController.java
-Ở dòng nào:
-- 20-29
-Ảnh hưởng:
-- `setVelocity(new Vector(0, 0.42, 0))` thay toàn bộ velocity bằng vector chỉ có Y.
-Hệ quả:
-- Bot đang chạy sẽ mất X/Z velocity, nhìn giống bị đóng băng rồi nhảy lên.
-
-8. HIGH - Critical jump có thể làm bot bay/nhảy bất thường.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
-Ở dòng nào:
-- 38-47
-Ảnh hưởng:
-- Khi trong 3 block và hết cooldown, bot tự set velocity Y = 0.42 để crit.
-- Không check onGround, liquid, ladder, web, fall distance, jump cooldown vật lý, knockback, hay trạng thái đang navigation.
-Hệ quả:
-- Đúng triệu chứng "nó đánh rồi nó bay luôn", "tôi nhảy lên nó nhảy theo".
-
-9. MEDIUM/HIGH - Attack có thể bị kẹt `jumpTriggered`.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
-Ở dòng nào:
-- 14-16, 31-47
-Ảnh hưởng:
-- Sau khi jump, code chỉ đánh nếu `botPlayer.getVelocity().getY() < 0`.
-- Nếu target vẫn trong range nhưng velocity Y không âm theo timing server/Citizens, bot không strike và `jumpTriggered` có thể giữ true.
-Hệ quả:
-- Bot có thể chỉ nhảy/treo nhịp đánh, gây cảm giác đơ.
-
-10. MEDIUM - Damage cố định, bỏ qua combat thật.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
-Ở dòng nào:
-- 18-22, 54-60
-Ảnh hưởng:
-- Damage luôn là 2.0 hoặc 4.0, không dựa vào item, attack cooldown, armor, enchant, potion, shield, axe.
-Hệ quả:
-- PvP không giống player thật; balance và anti-cheat/event behavior có thể lệch.
-
-11. MEDIUM - Bot không aim/rotate về target trước khi đánh.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
-- src/main/java/com/khoablabla/pvpbot/movement/BotMovementController.java
-Ở dòng nào:
-- MeleeAttackController.java:24-61
-- BotMovementController.java:15-30
-Ảnh hưởng:
-- Không có yaw/pitch/lookAt trước `swingMainHand()` và `damage()`.
-Hệ quả:
-- Bot có thể đánh trúng dù nhìn hướng khác, rất "ảo".
-
-12. MEDIUM - Thiếu `DAMAGE_BY_PLAYER` theo luật dự án.
-File nào:
-- src/main/java/com/khoablabla/pvpbot/traits/PvPBotTrait.java
-Ở dòng nào:
-- 43-47
-Ảnh hưởng:
-- Code có `npc.setProtected(false)` và `DAMAGE_OTHERS`, nhưng thiếu `npc.data().set(NPC.Metadata.DAMAGE_BY_PLAYER, true);` như AGENTS.md bắt buộc.
-Hệ quả:
-- Tùy version Citizens, bot có thể không nhận damage từ player đúng như kỳ vọng hoặc lệch chuẩn dự án.
-
-13. HIGH - Bot chết vẫn phát "joined the game".
+8. MEDIUM - Chỉ nhận revenge từ Player direct damager.
 File nào:
 - src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
 Ở dòng nào:
-- 91-122, đặc biệt 120
+- PlayerSimulationListener.java:129-140
+Lỗi như nào:
+- Chỉ xử lý event.getDamager() instanceof Player.
+- Arrow, trident, potion, TNT, wolf/pet, firework hoặc damage gián tiếp không set target.
 Ảnh hưởng:
-- Mỗi lần bot chết và replacement spawn thành công, server broadcast `botName + " joined the game"`.
+- Bot không trả đũa nhiều kiểu PvP phổ biến.
 Hệ quả:
-- Trái yêu cầu "khi spawn bot thì 1 lần join game thôi, khi chết không join nữa".
+- AI hành xử không nhất quán: kiếm thì chase, cung/trident thì có thể đứng im.
+Mức độ:
+- MEDIUM.
+Hướng sửa đề xuất:
+- Resolve Projectile#getShooter, Tameable owner, TNT source nếu cần.
 
-14. HIGH - Death handler luôn respawn/rejoin bằng NPC mới.
+9. MEDIUM - Respawn tạo NPC mới sau death, dễ mất state/quản lý id.
 File nào:
 - src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
 Ở dòng nào:
-- 63-123
+- PlayerSimulationListener.java:75-105
+Lỗi như nào:
+- Death handler remove spawnLocations old id, destroy NPC cũ, tạo NPC replacement id mới.
+- Nếu có future per-NPC settings/faction/kit/path, state sẽ mất nếu không copy.
 Ảnh hưởng:
-- Không có setting `bot-leave-on-death`, không có policy "death = stop", không phân biệt kill thật với manual remove.
+- Bot sau khi chết không còn đồng nhất với bản cũ.
 Hệ quả:
-- Bot chết luôn được tạo replacement nếu có location hợp lệ.
+- Các feature về sau sẽ lỗi ngầm nếu bám theo npc id.
+Mức độ:
+- MEDIUM.
+Hướng sửa đề xuất:
+- Dùng respawn policy rõ ràng; copy state trait; hoặc despawn/spawn cùng NPC nếu Citizens hỗ trợ.
 
-15. MEDIUM - Cache spawn location theo NPC id dễ lệch vòng đời.
+10. MEDIUM - removeall có thể bị respawn task tạo lại bot.
 File nào:
 - src/main/java/com/khoablabla/pvpbot/listeners/PlayerSimulationListener.java
+- src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
 Ở dòng nào:
-- 32, 44, 71, 94-100
+- PlayerSimulationListener.java:95-126
+- PvPBotCommand.java:219-257
+Lỗi như nào:
+- onNPCDeath schedule respawn sau 10 tick.
+- removeall destroy bot theo batch nhưng không hủy các respawn task đã hẹn từ death trước đó.
 Ảnh hưởng:
-- Old id bị remove ở dòng 71, replacement có id mới và phụ thuộc `NPCSpawnEvent` để cache lại.
+- Người chơi xóa sạch bot nhưng vài tick sau bot có thể xuất hiện lại nếu đang có task cũ.
 Hệ quả:
-- Nếu spawn event không chạy như kỳ vọng hoặc replacement spawn fail, thông tin respawn gốc mất.
+- Quản trị server thấy removeall không triệt để trong một số tình huống.
+Mức độ:
+- MEDIUM.
+Hướng sửa đề xuất:
+- Có set suppressedRespawns hoặc generation token khi remove/removeall.
 
-16. MEDIUM - Spawn fail im lặng trong command.
+11. LOW - Spawn fail không báo nguyên nhân.
 File nào:
 - src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
 Ở dòng nào:
-- 63-69
-- 72-85
-- 96-99
-- 115-120
-- 124-137
+- PvPBotCommand.java:63-69
+- PvPBotCommand.java:124-138
+Lỗi như nào:
+- spawnSingleBot trả false nếu không tìm được safeLocation hoặc Citizens spawn fail.
+- Caller nhiều nhánh không báo lý do cụ thể.
 Ảnh hưởng:
-- `spawnSingleBot` trả false nhưng nhiều nhánh không báo rõ nguyên nhân cho player.
+- Người chơi/admin không biết lỗi do vị trí, Citizens, world hay name.
 Hệ quả:
-- Người dùng chỉ thấy không có bot, khó biết do unsafe location hay Citizens spawn fail.
+- Khó debug khi bot không spawn.
+Mức độ:
+- LOW.
+Hướng sửa đề xuất:
+- Trả enum/result object thay vì boolean, log + sendMessage cụ thể.
 
-17. MEDIUM - Custom name validation yếu.
+12. LOW - Name validation chưa chặt.
 File nào:
 - src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
 Ở dòng nào:
-- 87-95
-- 104-114
+- PvPBotCommand.java:86-99
+- PvPBotCommand.java:104-119
+- PvPBotCommand.java:150-181
+Lỗi như nào:
+- Chỉ chặn < và > cho custom name.
+- Không trim, không giới hạn 16 ký tự cho custom name, không giới hạn regex Minecraft username.
 Ảnh hưởng:
-- Chỉ chặn `<` và `>`.
+- Tên NPC có thể xấu, quá dài, chứa ký tự điều khiển/màu hoặc gây vấn đề tablist/scoreboard.
 Hệ quả:
-- Có thể nhập tên quá dài, có space/ký tự màu/ký tự đặc biệt, gây lỗi tablist/profile/remove name.
+- Rủi ro lỗi hiển thị và conflict plugin khác.
+Mức độ:
+- LOW.
+Hướng sửa đề xuất:
+- Chuẩn hóa name: trim, 3-16 ký tự, [A-Za-z0-9_], reject duplicate sau normalize.
 
-18. MEDIUM - Safe location chưa chặn đủ hazardous block ở feet/head.
+13. LOW - SafeLocationFinder cho phép một số block non-solid không thật sự an toàn.
 File nào:
 - src/main/java/com/khoablabla/pvpbot/utils/SafeLocationFinder.java
 Ở dòng nào:
-- 11-15
-- 51-58
-- 61-68
+- SafeLocationFinder.java:11-15
+- SafeLocationFinder.java:51-58
+- SafeLocationFinder.java:61-68
+Lỗi như nào:
+- isNonSolid cho phép mọi block không solid làm feet/head.
+- Danh sách hazard thiếu cobweb, berry ở feet/head, bubble column, pointed dripstone, powder snow ở feet/head, campfire ở feet/head, portal ở feet/head.
 Ảnh hưởng:
-- HAZARDOUS_BLOCKS chỉ check block bên dưới.
-- Feet/head chỉ check non-solid và liquid, nên các block nguy hiểm non-solid có thể lọt.
+- Bot có thể spawn/wander vào block gây kẹt/chậm/damage.
 Hệ quả:
-- Bot có thể spawn trong fire/soul fire/berry bush/nether portal/powder snow tùy block state, rồi kẹt hoặc chết.
+- Một phần cảm giác "đi cực chậm" có thể đến từ block môi trường nếu bot được đặt vào vị trí kẹt.
+Mức độ:
+- LOW/MEDIUM tùy map.
+Hướng sửa đề xuất:
+- Có allowlist passable block thay vì blacklist hazard.
 
-19. MEDIUM - Không có test source.
-File nào:
-- src/test
-- build.gradle
-Ở dòng nào:
-- build.gradle:24, 32-34
-Ảnh hưởng:
-- Gradle khai báo JUnit nhưng `find src/test -type f -print` không có file nào.
-Hệ quả:
-- Build PASS không bắt được bug AI, respawn, movement, command behavior.
-
-20. HIGH - Release workflow có thể fail vì jar reobf không tồn tại.
-File nào:
-- .github/workflows/release.yml
-- build.gradle
-Ở dòng nào:
-- release.yml:36-40
-- build.gradle:1-3, 42-56
-Ảnh hưởng:
-- Workflow copy `build/libs/*-reobf.jar`, nhưng project chỉ dùng plugin `java`, không có paperweight/reobf task.
-- Build hiện tạo `build/libs/PvPBotPaper-1.0.0.jar`.
-Hệ quả:
-- GitHub release có thể fail tại bước rename jar.
-
-21. MEDIUM - README/spec lệch xa code thật.
+14. LOW - README/spec lệch xa code thực tế.
 File nào:
 - README.md
-- src/main/java/com/khoablabla/pvpbot/commands/PvPBotCommand.java
 Ở dòng nào:
-- README.md:198-375
-- PvPBotCommand.java:41-54, 274-300
+- Toàn file, đặc biệt các mục GUI, ranged, mace, survival, faction, kit, path, dashboard.
+Lỗi như nào:
+- README mô tả nhiều feature chưa có trong source hiện tại.
 Ảnh hưởng:
-- README liệt kê settings GUI, factions, kits, paths, ranged, mace, dashboard, nhiều command.
-- Code command hiện chỉ có `spawn`, `remove`, `removeall`.
+- A1/A2/A3 dễ hiểu sai trạng thái dự án.
 Hệ quả:
-- Người test sẽ tưởng có tính năng nhưng plugin chưa implement.
-
-22. LOW/MEDIUM - `release.sh` tự sửa source trước khi release mà không sync Gradle version.
-File nào:
-- release.sh
-- build.gradle
-- gradle.properties
-Ở dòng nào:
-- release.sh:90-96
-- build.gradle:5-6
-- gradle.properties:1-2
-Ảnh hưởng:
-- Script chỉ sửa `src/main/resources/plugin.yml`, không sửa version trong Gradle.
-Hệ quả:
-- Tên jar vẫn theo version Gradle cũ, metadata source có thể lệch.
-
-23. LOW - Root có class files/manifest rời ngoài build output.
-File nào:
-- net/citizensnpcs/api/ai/Navigator.class
-- net/citizensnpcs/api/ai/NavigatorParameters.class
-- META-INF/MANIFEST.MF
-Ở dòng nào:
-- Không áp dụng, là binary file ở root.
-Ảnh hưởng:
-- File binary rời nằm ngoài `build/` và `libs/`.
-Hệ quả:
-- Dễ nhầm là source/runtime artifact cần đóng gói, làm repo bẩn và audit khó hơn.
+- Prompt/code sau có thể dựa vào feature chưa tồn tại.
+Mức độ:
+- LOW.
+Hướng sửa đề xuất:
+- Tách "đã có" và "roadmap"; ghi rõ Phase hiện tại chỉ có spawn/remove, revenge melee cơ bản, idle wander.
 
 ==========================================================
-🎯 --- KẾT LUẬN THEO TRIỆU CHỨNG BẠN BÁO ---
+📋 --- HƯỚNG DẪN KIỂM THỬ TRONG GAME ---
 ==========================================================
-Triệu chứng: "khi tôi đến gần nó đánh".
-- Nguyên nhân chính: PvPBotTrait.java:64-70 + CombatTargetSelector.java:24-40.
-- Code hiện là auto-target theo khoảng cách, không phải bị đánh mới trả đũa.
+Mục tiêu test:
+- Xác nhận lỗi chính là cancel navigation + jump crit + setTarget mỗi tick.
 
-Triệu chứng: "bot bị đóng băng, đánh rồi bay, tôi nhảy lên nó nhảy theo".
-- Nguyên nhân chính: BotMovementController.java:20-29 và MeleeAttackController.java:38-47.
-- Cả movement và crit đều dùng `setVelocity` thô, thiếu check onGround/state.
+Chuẩn bị:
+- Server Paper 1.21.11 với Citizens đúng version đang dùng.
+- Plugin jar: build/libs/PvPBotPaper-1.0.0.jar
+- Người test có permission pvpbot.admin.
 
-Triệu chứng: "không có ai trong tầm mắt thì đứng im".
-- Nguyên nhân chính: PvPBotTrait.java:71-74.
-- Không có idle behavior.
-
-Triệu chứng: "spawn bot thì join 1 lần thôi, chết không join nữa".
-- Nguyên nhân chính: PlayerSimulationListener.java:91-122, đặc biệt 120.
-- Death respawn đang broadcast joined game mỗi lần replacement spawn.
-
-==========================================================
-📋 --- TEST CASES ĐỀ XUẤT CHO A3 / HUMAN ---
-==========================================================
 Lệnh cần gõ:
-- `./build.sh`
-- Start Paper 1.21.11 với Citizens + PvPBot jar.
-- `/pvpbot spawn TestBot`
-- `/pvpbot spawn 5`
-- `/pvpbot removeall`
+- /pvpbot spawn TestBot
+- /pvpbot remove TestBot
+- /pvpbot removeall
 
-Các case cần test trong game:
-- Đứng gần bot nhưng không đánh: bot không được tự target/đánh nếu mục tiêu là revenge-only.
-- Đánh bot một hit: bot phải lock đúng người vừa đánh trong thời gian aggro timeout.
-- Đứng sau tường trong 16 block: bot không được target nếu không có line-of-sight.
-- Nhảy trước mặt bot: bot không được spam nhảy/bay theo người chơi.
-- Bot đánh cận chiến: không được khựng mất vận tốc ngang.
-- Không có target: bot phải idle theo design mới, hoặc đứng guard có chủ ý, không cancel loạn navigator.
-- Kill bot: không broadcast "joined the game" lần nữa nếu yêu cầu là chỉ join một lần khi spawn.
-- Spawn fail ở vị trí không an toàn: player phải nhận message lỗi rõ.
-- Release workflow: xác nhận artifact name đúng, không phụ thuộc `*-reobf.jar` nếu project chưa dùng paperweight.
+Test Case 1 - Hit bot khi đứng sát:
+- Spawn TestBot trên nền phẳng.
+- Đứng cách bot 2-3 block.
+- Đánh bot một lần bằng kiếm.
+- Quan sát: bot có bật lên, khựng path, rồi mới lao tới không.
+- Kỳ vọng hiện tại: có khả năng xuất hiện lỗi nhảy/khựng.
+
+Test Case 2 - Hit bot rồi lùi nhanh:
+- Đánh bot một lần.
+- Lùi ra 5-8 block ngay khi bot bắt đầu chase.
+- Quan sát: bot có dừng/đổi nhịp/đi chậm sau cú nhảy crit không.
+- Kỳ vọng hiện tại: chase không mượt do setTarget mỗi tick và cancel khi jump.
+
+Test Case 3 - Knockback:
+- Dùng kiếm có Knockback hoặc sprint-hit bot.
+- Quan sát: bot có bị bật ngang + bật Y giống bay không.
+- Kỳ vọng hiện tại: lỗi rõ hơn vì setVelocity jump cộng với knockback.
+
+Test Case 4 - Projectile:
+- Bắn bot bằng cung/trident.
+- Quan sát: bot có trả đũa không.
+- Kỳ vọng hiện tại: có thể không set target vì listener chỉ nhận damager là Player trực tiếp.
+
+Test Case 5 - Removeall sau combat/death:
+- Spawn nhiều bot, cho một bot chết hoặc đang trong respawn window.
+- Gõ /pvpbot removeall.
+- Đợi 1-2 giây.
+- Quan sát: có bot nào xuất hiện lại không.
+- Kỳ vọng hiện tại: có rủi ro respawn task cũ tạo lại bot.
 
 ==========================================================
 📊 --- TỔNG QUAN ---
 ==========================================================
-- Build hiện tại: PASS, 0 compile errors.
-- Static scan của build.sh: PASS, 0 warnings.
-- Unit tests: không có test nào.
-- Số lỗi/cảnh báo audit thủ công: 23.
-- Lỗi nghiêm trọng nhất liên quan gameplay: auto-target không revenge-only, velocity jump thô, respawn broadcast join.
-- Không sửa production code trong `src/`.
-- Không sửa `report.md`.
-- Không chạy hoặc sửa `sign.py`.
-- File đã ghi: `codex-report.md`.
-- Tỷ lệ hoàn thành audit: **100%**
+- Build/cú pháp: PASS.
+- Test tự động: Không có test source, nên mức tin cậy runtime vẫn thấp.
+- Lỗi nghiêm trọng nhất: combat jump hủy navigation + movement spam setTarget mỗi tick.
+- File trọng tâm cần sửa trước:
+  - src/main/java/com/khoablabla/pvpbot/combat/MeleeAttackController.java
+  - src/main/java/com/khoablabla/pvpbot/movement/BotMovementController.java
+  - src/main/java/com/khoablabla/pvpbot/traits/PvPBotTrait.java
+- Ưu tiên sửa:
+  1. Không cancel navigation mỗi tick khi jump.
+  2. Không setTarget lại mỗi tick; repath có throttle/cache.
+  3. Re-check range/LOS/validity trước khi executeStrike.
+  4. Clamp/guard velocity khi nhảy crit sau khi bị knockback.
+  5. Bổ sung xử lý projectile/indirect damage nếu muốn revenge AI thật.
+- Tỷ lệ hoàn thành audit: 100%.
+- Tỷ lệ ổn định của code hiện tại theo audit runtime: khoảng 55-65% cho melee AI cơ bản, vì build pass nhưng movement/combat state machine còn lỗi hành vi nặng.

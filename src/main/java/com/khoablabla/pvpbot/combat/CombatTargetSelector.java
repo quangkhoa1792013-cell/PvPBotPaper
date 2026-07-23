@@ -1,10 +1,10 @@
-// Phase 3: Core Melee Combat AI — Revenge-Only Target Validation
+// Phase 3.3.2: Relentless Pursuit — No LOS, No Timeout, World-Safe
 package com.khoablabla.pvpbot.combat;
 
 import net.citizensnpcs.api.npc.NPC;
 
-import org.bukkit.Location;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
 
 public final class CombatTargetSelector {
 
@@ -16,11 +16,10 @@ public final class CombatTargetSelector {
         if (currentTarget.isDead() || !currentTarget.isValid()) return null;
         if (!(npc.getEntity() instanceof LivingEntity botEntity)) return null;
 
+        if (!botEntity.getWorld().equals(currentTarget.getWorld())) return null;
+
         double distSq = botEntity.getLocation().distanceSquared(currentTarget.getLocation());
         if (distSq > range * range) return null;
-
-        double meleeRangeSq = 3.0 * 3.0;
-        if (tickCounter - lastDamageTick > 200 && distSq > meleeRangeSq) return null;
 
         return currentTarget;
     }

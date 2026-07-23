@@ -16,6 +16,7 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 
 import com.khoablabla.pvpbot.PvPBot;
+import com.khoablabla.pvpbot.listeners.PlayerSimulationListener;
 import com.khoablabla.pvpbot.traits.PvPBotTrait;
 import com.khoablabla.pvpbot.utils.SafeLocationFinder;
 
@@ -189,6 +190,7 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§c[PvPBot] No PvPBot named '" + name + "' found.");
                 return true;
             }
+            PlayerSimulationListener.cancelRespawn(npc.getId());
             npc.destroy();
             sender.sendMessage("Removed PvPBot '" + name + "'");
             return true;
@@ -211,6 +213,7 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        PlayerSimulationListener.cancelRespawn(npc.getId());
         npc.destroy();
         sender.sendMessage("Removed PvPBot (ID: " + npc.getId() + ")");
         return true;
@@ -222,6 +225,10 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
             if (npc.hasTrait(PvPBotTrait.class)) {
                 toRemove.add(npc);
             }
+        }
+
+        for (NPC npc : toRemove) {
+            PlayerSimulationListener.cancelRespawn(npc.getId());
         }
 
         int total = toRemove.size();

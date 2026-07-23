@@ -1,4 +1,4 @@
-// Phase 3: Core Melee Combat AI — Melee Attack Loop & Tick-Based Jump Crit State Machine
+// Phase 3.3.1: Melee Attack Loop — Forward Sprint-Leap with Navigation Suspension
 package com.khoablabla.pvpbot.combat;
 
 import net.citizensnpcs.api.npc.NPC;
@@ -16,8 +16,9 @@ public class MeleeAttackController {
     private boolean criticalsEnabled = true;
 
     private static final double ATTACK_RANGE = 3.5;
-    private static final double JUMP_VELOCITY = 0.42;
-    private static final int SWORD_COOLDOWN = 12;
+    private static final double JUMP_VELOCITY = 0.38;
+    private static final double LEAP_SPEED = 0.22;
+    private static final int SWORD_COOLDOWN = 8;
     private static final double NORMAL_DAMAGE = 2.0;
     private static final double CRITICAL_DAMAGE = 4.0;
 
@@ -33,13 +34,11 @@ public class MeleeAttackController {
         if (jumpTicks >= 0) {
             jumpTicks++;
 
-            // Ticks 0-4: Ascending phase — do NOT check for landing
-            // Tick 5: Execute crit strike at apex
-            if (jumpTicks == 5) {
+            if (jumpTicks == 5 && target.getWorld().equals(botPlayer.getWorld())
+                    && botPlayer.getLocation().distanceSquared(target.getLocation()) <= ATTACK_RANGE * ATTACK_RANGE) {
                 executeStrike(botPlayer, target, true);
             }
 
-            // Ticks 5+: Descending phase — check for landing only if falling
             if (jumpTicks > 4 && botPlayer.getVelocity().getY() <= 0.0) {
                 if (botPlayer.isOnGround() || botPlayer.getLocation().subtract(0, 0.2, 0).getBlock().isSolid()) {
                     jumpTicks = -1;
@@ -47,7 +46,6 @@ public class MeleeAttackController {
                 }
             }
 
-            // Absolute timeout safety net
             if (jumpTicks >= 12) {
                 jumpTicks = -1;
                 cooldownTicks = SWORD_COOLDOWN;
@@ -65,8 +63,23 @@ public class MeleeAttackController {
             Location below = botPlayer.getLocation().subtract(0, 0.1, 0);
             if (!below.getBlock().isSolid()) return;
 
+            Vector direction = target.getLocation().toVector().subtract(botPlayer.getLocation().toVector());
+            direction.setY(0);
+
             Vector currentVel = botPlayer.getVelocity();
-            botPlayer.setVelocity(new Vector(currentVel.getX(), JUMP_VELOCITY, currentVel.getZ()));
+            double finalX;
+            double finalZ;
+
+            if (direction.lengthSquared() == 0) {
+                finalX = currentVel.getX() * 0.3;
+                finalZ = currentVel.getZ() * 0.3;
+            } else {
+                direction.normalize();
+                finalX = currentVel.getX() * 0.3 + (direction.getX() * LEAP_SPEED) * 0.7;
+                finalZ = currentVel.getZ() * 0.3 + (direction.getZ() * LEAP_SPEED) * 0.7;
+            }
+
+            botPlayer.setVelocity(new Vector(finalX, JUMP_VELOCITY, finalZ));
             npc.getNavigator().cancelNavigation();
             jumpTicks = 0;
         } else {

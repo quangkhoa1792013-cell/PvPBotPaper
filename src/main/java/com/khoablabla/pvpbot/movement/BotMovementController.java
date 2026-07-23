@@ -1,4 +1,4 @@
-// Phase 3: Core Melee Combat AI — Pursuit Navigation & Idle Wander
+// Phase 3.3: Throttled Pathfinder & Repath Cache
 package com.khoablabla.pvpbot.movement;
 
 import net.citizensnpcs.api.npc.NPC;
@@ -13,18 +13,23 @@ import java.util.Random;
 
 public class BotMovementController {
 
+    private Location lastTargetLocation = null;
+    private int lastRepathTick = -20;
     private final Random random = new Random();
 
-    public void handleMovement(NPC npc, LivingEntity target, int currentTick, boolean isJumping) {
+    private static final int REPATH_INTERVAL = 5;
+    private static final double THROTTLE_DISTANCE_SQ = 2.25;
+
+    public void handleMovement(NPC npc, LivingEntity target, int currentTick) {
         if (npc.getEntity() == null) return;
 
-        if (isJumping) {
-            if (npc.getNavigator().isNavigating()) {
-                npc.getNavigator().cancelNavigation();
-            }
-            return;
-        }
+        if (currentTick - lastRepathTick < REPATH_INTERVAL) return;
 
+        if (npc.getNavigator().isNavigating() && lastTargetLocation != null
+                && target.getLocation().distanceSquared(lastTargetLocation) <= THROTTLE_DISTANCE_SQ) return;
+
+        lastTargetLocation = target.getLocation().clone();
+        lastRepathTick = currentTick;
         npc.getNavigator().setTarget(target, true);
         npc.getNavigator().getLocalParameters().speedModifier(1.5F);
     }
