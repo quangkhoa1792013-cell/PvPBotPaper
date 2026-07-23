@@ -83,7 +83,7 @@ public class PvPBotTrait extends Trait {
 
         if (target != null && !target.isDead() && target.isValid()) {
             attackController.handleAttack(npc, target);
-            movementController.handleMovement(npc, target, tickCounter);
+            target = movementController.handleMovement(npc, target, tickCounter);
             idleTickCounter = 0;
         } else {
             target = null;

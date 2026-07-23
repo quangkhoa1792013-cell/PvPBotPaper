@@ -119,6 +119,10 @@ Các lỗi nêu trên:
 - [x] Lỗi 3.3.2.4: **World-mismatch guard** — `CombatTargetSelector.java` line 19: `if (!botEntity.getWorld().equals(currentTarget.getWorld())) return null;`. **PASS.**
 - [x] Lỗi 3.3.2.5: **TARGET_RANGE=256.0** — `PvPBotTrait.java` line 28: `TARGET_RANGE = 256.0`. **PASS.**
 - [x] Lỗi 3.3.2.6: **Compilation** — `./build.sh` clean: 0 errors, 1 deprecation warning (`isOnGround()`), 0 static analysis warnings. JAR 26KB. **PASS.**
+- [ ] Lỗi 3.3.3.1: **COMPILE ERROR** — `BotMovementController.java` line 59: `npc.getNavigator().setTarget(safe, false)` — `safe` là `Location`, không phải `Entity`. `setTarget(Location)` không có tham số boolean. Cần sửa thành `npc.getNavigator().setTarget(safe)`.
+- [x] Lỗi 3.3.3.2: **Interim waypoint ≤32 blocks** — `BotMovementController.java` line 48: `distance <= LONG_DISTANCE_THRESHOLD (32.0)` → `setTarget(target, true)`. **PASS.**
+- [x] Lỗi 3.3.3.3: **Interim waypoint 32-128 blocks** — Lines 50-59: Tính `direction = normalize(targetLoc - botLoc)`, `interim = botLoc + direction * 24`, tìm safe location, fallback highest block. **PASS — toán học đúng.**
+- [x] Lỗi 3.3.3.4: **Extreme distance >128 blocks** — Lines 35-38: `cancelNavigation()`, return null. `PvPBotTrait` line 86: `target = movementController.handleMovement(...)` capture null → clear target. **PASS.**
 =========================================================
 ### Bước 1: Cài đặt & Khởi động
 - Copy file JAR `PvPBotPaper-1.0.0.jar` từ `build/libs/` vào `plugins/`.
@@ -127,9 +131,10 @@ Các lỗi nêu trên:
 ### Bước 2: Kiểm thử trong game (Gõ lệnh theo trình tự)
 1. Gõ `/pvpbot spawn` -> Tạo bot, TAB kiểm tra Tablist.
 2. Gõ `/gamemode survival` -> Đánh bot 1 hit để bot đuổi bạn.
-3. Đứng yên chịu đòn -> **Xác nhận tốc độ đánh:** Bot vung kiếm chém liên hoàn cực kỳ nhanh và dồn dập (cooldown 8 ticks, nhanh gấp 1.5 lần trước).
-4. Chạy ra xa, trốn sau các bức tường hoặc block lớn -> **Xác nhận tuyệt đối:** Bot KHÔNG bỏ mục tiêu sau 10 giây, tự động chạy vòng qua tường xuyên qua mọi block để săn lùng bạn bằng được.
-5. Đổi sang chế độ Sáng tạo (`/gamemode creative`) -> Bot lập tức dừng chém và đi dạo hòa bình (Wander AI).
+3. **Kiểm tra truy đuổi tầm xa (Quyết định):** Chạy thật nhanh ra xa ngoài 40 blocks.
+   - **Kết quả cần thấy:** Thay vì bot dừng lại đứng im như trước, bot sẽ liên tục tính điểm mốc mượt mà và chạy vắt chân lên cổ đuổi theo bạn xuyên suốt quãng đường dài một cách trơn tru, không bị nghẽn hay khựng đường đi!
+4. Khi bạn đứng lại gần -> Bot tự động chuyển về đuổi trực tiếp và nhảy chém Crit rơi đất tự nhiên.
+5. Đánh chết bot -> Bot hồi sinh lập tức sau 0.5 giây.
 
 =========================================================
 ⚠️ --- CÁC LỖI PHÁT SINH KHÁC KHÔNG TRONG DANH SÁCH OR TRONG CODE NGẦM ---
@@ -153,23 +158,25 @@ Các lỗi xuất hiện:
   6. Phase 3.4: Ascending/descending separation in jump state machine (ticks 0-4 no landing check), velocity Y guard before ground check, absolute timeout 12 ticks, force `cancelNavigation()` every tick when `isJumping`.
   7. Phase 3.5: Gravity trait registered in `PvPBotCommand.spawnSingleBot()`, manual B-hop Y-velocity removed from `BotMovementController`, speedModifier(1.5F) added.
   8. Phase 3.3.1: Forward sprint-leap on jump crit (LEAP_SPEED=0.22, direction blend 30/70).
-  9. Phase 3.3.2: SWORD_COOLDOWN=8, LOS removed from validateTarget, 200-tick timeout removed, world-mismatch guard added, TARGET_RANGE=256.0.
+   9. Phase 3.3.2: SWORD_COOLDOWN=8, LOS removed from validateTarget, 200-tick timeout removed, world-mismatch guard added, TARGET_RANGE=256.0.
+  10. Phase 3.3.3: Hybrid waypoint pursuit (≤32 direct, 32-128 interim 24-block waypoint, >128 clear target).
 
-- Lỗi chưa sửa: KHÔNG CÒN LỖI NÀO (0 errors). Tất cả các lỗi trong danh sách và kiểm tra code ngầm đã được giải quyết 100%.
+- Lỗi chưa sửa: 
+  - **COMPILE ERROR** — `BotMovementController.java` line 59: `setTarget(safe, false)` — `safe` là `Location`, cần sửa thành `setTarget(safe)`.
 
 - Đã sửa những gì, ở file nào: 
   - `MeleeAttackController.java`: Early Landing Detection, Phase 3.3.1: LEAP_SPEED+forward momentum. Phase 3.3.2: SWORD_COOLDOWN 12→8.
-  - `BotMovementController.java`: Phase 3.3: Repath throttle (REPATH_INTERVAL=5, THROTTLE_DISTANCE_SQ=2.25), xoá isJumping param. Phase 3.5: Xoá B-hop, speedModifier. Phase 3.5.1: Xoá jumpAt.
+  - `BotMovementController.java`: Phase 3.3: Repath throttle, xoá isJumping param. Phase 3.5: Xoá B-hop, speedModifier. Phase 3.5.1: Xoá jumpAt. Phase 3.3.3: Hybrid waypoint pursuit (3 distance cases), return type void→LivingEntity.
   - `CombatTargetSelector.java`: Phase 3.3: hasLineOfSight(). Phase 3.3.2: Xoá LOS+timeout, thêm world-mismatch guard.
-  - `PvPBotTrait.java`: TARGET_RANGE 16→256.
+  - `PvPBotTrait.java`: TARGET_RANGE 16→256. Phase 3.3.3: target = movementController.handleMovement(...) capture return.
   - `PlayerSimulationListener.java`: UUID purge, indirect damage, respawnTasks map+cancelRespawn.
   - `PvPBotCommand.java`: cancelRespawn trước destroy. Phase 3.5: Gravity trait.
 
 - Lỗi đấy ở đâu: 
   - `MeleeAttackController.java` (lines 18-23, 37-38, 66-84)
-  - `BotMovementController.java` (lines 16-34)
+  - `BotMovementController.java` (lines 16-63)
   - `CombatTargetSelector.java` (lines 14-25)
-  - `PvPBotTrait.java` (line 28)
+  - `PvPBotTrait.java` (lines 28, 86)
   - `PlayerSimulationListener.java` (lines 68-71, 98-103)
   - `PvPBotCommand.java` (line 133)
 
@@ -177,9 +184,9 @@ Các lỗi xuất hiện:
   - State machine nhảy trước đó không phát hiện khi bot hạ cánh sớm trên thềm dốc/bậc thang, làm bot kẹt trạng thái nhảy và lơ lửng.
   - Offset `0.01` quá nhỏ gây lỗi làm tròn floating-point khi check block dưới chân player entity.
   - Paper Moonrise không kịp unmap UUID của entity cũ khi `npc.destroy()` được gọi, dẫn đến lỗi trùng UUID khi respawn NPC mới.
-  - Phase 3.3.2: SWORD_COOLDOWN 12 quá chậm, LOS+timeout giới hạn pursuit, TARGET_RANGE 16 quá ngắng, thiếu world guard. Tất cả đã sửa.
+  - Phase 3.3.3: `setTarget(safe, false)` sai overload — `Location` không có tham số boolean. Cần sửa thành `setTarget(safe)`.
 
-- Tỷ lệ hoàn thành nhiệm vụ: **100 %**
+- Tỷ lệ hoàn thành nhiệm vụ: **95 %** (còn 1 compile error cần A2 sửa: BotMovementController.java dòng 59)
 
 ==========================================================
 🛡️ --- PHASE 3.5.1 — BỔ SUNG ---
@@ -272,3 +279,19 @@ Các file sửa: MeleeAttackController.java, CombatTargetSelector.java, PvPBotTr
 - MeleeAttackController.java: SWORD_COOLDOWN từ 12 → 8.
 - CombatTargetSelector.java: Xoá hasLineOfSight(), xoá timeout 200 tick + melee range check. Thêm world-mismatch guard (getWorld().equals). Giữ range check với range².
 - PvPBotTrait.java: TARGET_RANGE từ 16.0 → 256.0.
+
+==========================================================
+🛡️ --- PHASE 3.3.3 — BỔ SUNG ---
+==========================================================
+- [x] Lỗi 1: Citizens Navigator fail với distance > 32 blocks → bot đứng im khi target xa. → Thêm hybrid interim waypoint pursuit.
+- [x] Lỗi 2: Không có extreme distance guard → performance drop nếu target quá xa. → Clear target nếu distance > 128 blocks.
+- [x] Lỗi 3: handleMovement không thể signal "clear target" → đổi return type từ void thành LivingEntity.
+
+📂 --- FILE SỬA (Phase 3.3.3) ---
+==========================================================
+Các file sửa: BotMovementController.java, PvPBotTrait.java
+
+💾 --- FILE ĐÃ SỬA (Phase 3.3.3) ---
+==========================================================
+- BotMovementController.java: Thêm 3 case hybrid routing (≤32 trực tiếp, 32-128 interim waypoint 24 blocks + SafeLocationFinder, >128 clear target). Repath throttle giữ nguyên. Return type đổi thành LivingEntity.
+- PvPBotTrait.java: target = movementController.handleMovement(...) để capture null signal từ extreme distance case.
