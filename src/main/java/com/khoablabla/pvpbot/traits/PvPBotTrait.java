@@ -2,6 +2,8 @@
 // Phase 2: Tablist & Player Simulation
 // Phase 3: Core Melee Combat AI Integration
 // Phase 3.3: Simplified tick sequence — no isJumping coordination
+// Phase 4: Per-NPC local settings overrides
+// Phase 4.1.1: Functional settings — combat, auto-target, target-players, target-bots
 package com.khoablabla.pvpbot.traits;
 
 import net.citizensnpcs.api.npc.NPC;
@@ -15,7 +17,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 import com.khoablabla.pvpbot.PvPBot;
 import com.khoablabla.pvpbot.combat.CombatTargetSelector;
 import com.khoablabla.pvpbot.combat.MeleeAttackController;
+import com.khoablabla.pvpbot.config.SettingsRegistry;
 import com.khoablabla.pvpbot.movement.BotMovementController;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class PvPBotTrait extends Trait {
 
@@ -25,10 +31,35 @@ public class PvPBotTrait extends Trait {
     private LivingEntity target = null;
     private final BotMovementController movementController = new BotMovementController();
     private final MeleeAttackController attackController = new MeleeAttackController();
-    private static final double TARGET_RANGE = 256.0;
+    private final Map<String, Object> localSettings = new HashMap<>();
 
     public PvPBotTrait() {
         super("pvpbot");
+    }
+
+    public <T> T getSetting(String key, Class<T> type) {
+        if (localSettings.containsKey(key)) {
+            return SettingsRegistry.getInstance().coerce(localSettings.get(key), type);
+        }
+        return SettingsRegistry.getInstance().getGlobal(key, type);
+    }
+
+    public void setLocalSetting(String key, Object value) {
+        SettingsRegistry reg = SettingsRegistry.getInstance();
+        SettingsRegistry.SettingMeta<?> meta = reg.getMeta(key);
+        if (meta == null) return;
+        Object coerced = reg.validateAndCast(value, meta);
+        if (coerced != null) {
+            localSettings.put(key, coerced);
+        }
+    }
+
+    public void clearLocalSetting(String key) {
+        localSettings.remove(key);
+    }
+
+    public Map<String, Object> getLocalSettings() {
+        return localSettings;
     }
 
     public void setTarget(LivingEntity newTarget) {
@@ -72,8 +103,33 @@ public class PvPBotTrait extends Trait {
     public void run() {
         tickCounter++;
 
+        boolean combat = getSetting("combat", Boolean.class);
+        if (!combat) {
+            target = null;
+            npc.getNavigator().cancelNavigation();
+            idleTickCounter++;
+            if (idleTickCounter >= 100) {
+                idleTickCounter = 0;
+                movementController.handleIdleWander(npc);
+            }
+            return;
+        }
+
         if (tickCounter % 10 == 0) {
-            target = CombatTargetSelector.validateTarget(npc, TARGET_RANGE, target, tickCounter, lastDamageTick);
+            double viewDist = getSetting("view-distance", Double.class);
+            boolean targetPlayers = getSetting("target-players", Boolean.class);
+            boolean targetBots = getSetting("target-bots", Boolean.class);
+
+            if (target == null) {
+                boolean autoTarget = getSetting("auto-target", Boolean.class);
+                if (autoTarget) {
+                    target = CombatTargetSelector.scanForTarget(npc, viewDist, targetPlayers, targetBots);
+                }
+            } else {
+                target = CombatTargetSelector.validateTarget(npc, viewDist, target, tickCounter,
+                        lastDamageTick, targetPlayers, targetBots);
+            }
+
             if (target instanceof Player p
                     && (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR)) {
                 target = null;
@@ -82,8 +138,8 @@ public class PvPBotTrait extends Trait {
         }
 
         if (target != null && !target.isDead() && target.isValid()) {
-            attackController.handleAttack(npc, target);
-            target = movementController.handleMovement(npc, target, tickCounter);
+            attackController.handleAttack(npc, target, this);
+            target = movementController.handleMovement(npc, target, tickCounter, this);
             idleTickCounter = 0;
         } else {
             target = null;
@@ -97,3 +153,4 @@ public class PvPBotTrait extends Trait {
         }
     }
 }
+

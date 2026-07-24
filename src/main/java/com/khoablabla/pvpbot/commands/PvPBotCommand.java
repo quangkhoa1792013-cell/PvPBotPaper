@@ -1,4 +1,5 @@
 // Phase 2: Core Commands, Mass Spawn, and Tab Completion
+// Phase 4: Dynamic /pvpbot settings command tree
 package com.khoablabla.pvpbot.commands;
 
 import net.kyori.adventure.text.Component;
@@ -16,6 +17,7 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 
 import com.khoablabla.pvpbot.PvPBot;
+import com.khoablabla.pvpbot.config.SettingsRegistry;
 import com.khoablabla.pvpbot.listeners.PlayerSimulationListener;
 import com.khoablabla.pvpbot.traits.PvPBotTrait;
 import com.khoablabla.pvpbot.utils.SafeLocationFinder;
@@ -40,7 +42,7 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 0) {
-            sender.sendMessage("Usage: /pvpbot spawn [name|number] [name2...] | /pvpbot remove [name] | /pvpbot removeall");
+            sender.sendMessage("Usage: /pvpbot spawn [name|number] [name2...] | /pvpbot remove [name] | /pvpbot removeall | /pvpbot settings [botName] [key] [value]");
             return true;
         }
 
@@ -48,11 +50,89 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
             case "spawn" -> handleSpawn(sender, args);
             case "remove" -> handleRemove(sender, args);
             case "removeall" -> handleRemoveAll(sender);
+            case "settings" -> handleSettings(sender, args);
             default -> {
-                sender.sendMessage("Unknown subcommand. Usage: /pvpbot spawn [name|number] [name2...] | /pvpbot remove [name] | /pvpbot removeall");
+                sender.sendMessage("Unknown subcommand. Usage: /pvpbot spawn [name|number] [name2...] | /pvpbot remove [name] | /pvpbot removeall | /pvpbot settings [botName] [key] [value]");
                 yield true;
             }
         };
+    }
+
+    private boolean handleSettings(CommandSender sender, String[] args) {
+        SettingsRegistry reg = SettingsRegistry.getInstance();
+
+        if (args.length == 1) {
+            sender.sendMessage("§6=== PvPBot Global Settings ===");
+            for (var entry : reg.getAllMeta().entrySet()) {
+                String key = entry.getKey();
+                Object val = reg.getGlobal(key, Object.class);
+                sender.sendMessage("§e" + key + "§f: " + val);
+            }
+            return true;
+        }
+
+        if (args.length == 2) {
+            String key = args[1];
+            SettingsRegistry.SettingMeta<?> meta = reg.getMeta(key);
+            if (meta == null) {
+                sender.sendMessage("§cUnknown setting: " + key);
+                return true;
+            }
+            Object val = reg.getGlobal(key, Object.class);
+            sender.sendMessage("§e" + key + "§f: " + val + "  §7(default: " + meta.defaultValue() + ")");
+            return true;
+        }
+
+        if (args.length == 3) {
+            String key = args[1];
+            String rawVal = args[2];
+            Object parsed = reg.parseValue(key, rawVal);
+            if (parsed == null) {
+                sender.sendMessage("§cInvalid value for '" + key + "'. Check type and range.");
+                return true;
+            }
+            reg.setGlobal(key, parsed);
+            reg.saveToConfig();
+            sender.sendMessage("§aGlobal §e" + key + "§a set to §f" + parsed);
+            return true;
+        }
+
+        if (args.length == 4) {
+            String botName = args[1];
+            String key = args[2];
+            String rawVal = args[3];
+
+            NPC npc = findPvPBotByName(botName);
+            if (npc == null) {
+                sender.sendMessage("§cNo PvPBot named '" + botName + "' found.");
+                return true;
+            }
+
+            PvPBotTrait trait = npc.getTraitNullable(PvPBotTrait.class);
+            if (trait == null) {
+                sender.sendMessage("§cThat NPC does not have a PvPBot trait.");
+                return true;
+            }
+
+            SettingsRegistry.SettingMeta<?> meta = reg.getMeta(key);
+            if (meta == null) {
+                sender.sendMessage("§cUnknown setting: " + key);
+                return true;
+            }
+
+            Object parsed = reg.parseValue(key, rawVal);
+            if (parsed == null) {
+                sender.sendMessage("§cInvalid value for '" + key + "'. Check type and range.");
+                return true;
+            }
+
+            trait.setLocalSetting(key, parsed);
+            sender.sendMessage("§a" + botName + "§a: §e" + key + "§a set to §f" + parsed + " §7(local override)");
+            return true;
+        }
+
+        sender.sendMessage("§cUsage: /pvpbot settings [botName] [key] [value]");
+        return true;
     }
 
     private boolean handleSpawn(CommandSender sender, String[] args) {
@@ -132,6 +212,10 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
         npc.data().set(NPC.Metadata.NAMEPLATE_VISIBLE, true);
         npc.addTrait(PvPBotTrait.class);
         npc.getOrAddTrait(net.citizensnpcs.trait.Gravity.class);
+        npc.getNavigator().getDefaultParameters()
+            .distanceMargin(1.0)
+            .pathDistanceMargin(1.0)
+            .attackRange(1.0);
         if (!npc.spawn(safeLocation)) {
             npc.destroy();
             return false;
@@ -283,26 +367,48 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
             String partial = args[0].toLowerCase();
-            return List.of("spawn", "remove", "removeall").stream()
+            return List.of("spawn", "remove", "removeall", "settings").stream()
                     .filter(s -> s.startsWith(partial))
                     .toList();
         }
 
         if (args.length == 2) {
             String sub = args[0].toLowerCase();
-            if (sub.equals("remove")) {
+            if (sub.equals("settings")) {
                 String partial = args[1].toLowerCase();
-                List<String> activeBotNames = new ArrayList<>();
-                for (NPC npc : CitizensAPI.getNPCRegistry()) {
-                    if (npc.hasTrait(PvPBotTrait.class) && npc.isSpawned()) {
-                        String name = npc.getName();
-                        if (name.toLowerCase().startsWith(partial)) {
-                            activeBotNames.add(name);
-                        }
-                    }
-                }
-                return activeBotNames;
+                return SettingsRegistry.getInstance().getAllMeta().keySet().stream()
+                        .filter(k -> k.startsWith(partial))
+                        .toList();
             }
+            return List.of();
+        }
+
+        if (args.length == 3) {
+            String sub = args[0].toLowerCase();
+            if (sub.equals("settings")) {
+                SettingsRegistry.SettingMeta<?> meta = SettingsRegistry.getInstance().getMeta(args[1]);
+                if (meta != null && meta.type() == Boolean.class) {
+                    String partial = args[2].toLowerCase();
+                    return List.of("true", "false").stream()
+                            .filter(s -> s.startsWith(partial))
+                            .toList();
+                }
+            }
+            return List.of();
+        }
+
+        if (args.length == 4) {
+            String sub = args[0].toLowerCase();
+            if (sub.equals("settings")) {
+                SettingsRegistry.SettingMeta<?> meta = SettingsRegistry.getInstance().getMeta(args[2]);
+                if (meta != null && meta.type() == Boolean.class) {
+                    String partial = args[3].toLowerCase();
+                    return List.of("true", "false").stream()
+                            .filter(s -> s.startsWith(partial))
+                            .toList();
+                }
+            }
+            return List.of();
         }
 
         return List.of();

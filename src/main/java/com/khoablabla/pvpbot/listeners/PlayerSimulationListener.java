@@ -1,4 +1,5 @@
 // Phase 3.3: Indirect Damage Revenge Tracking & Phantom Respawn Prevention
+// Phase 4.1.1: Revenge gate — respect revenge + combat settings
 package com.khoablabla.pvpbot.listeners;
 
 import net.citizensnpcs.api.CitizensAPI;
@@ -118,6 +119,10 @@ public class PlayerSimulationListener implements Listener {
                 replacement.data().set(NPC.Metadata.NAMEPLATE_VISIBLE, true);
                 replacement.addTrait(PvPBotTrait.class);
                 replacement.getOrAddTrait(net.citizensnpcs.trait.Gravity.class);
+                replacement.getNavigator().getDefaultParameters()
+                    .distanceMargin(1.0)
+                    .pathDistanceMargin(1.0)
+                    .attackRange(1.0);
 
                 boolean spawned = replacement.spawn(finalLoc);
                 if (!spawned) {
@@ -165,7 +170,11 @@ public class PlayerSimulationListener implements Listener {
 
         PvPBotTrait trait = npc.getTraitNullable(PvPBotTrait.class);
         if (trait != null) {
-            trait.setTarget(attacker);
+            boolean revenge = trait.getSetting("revenge", Boolean.class);
+            boolean combat = trait.getSetting("combat", Boolean.class);
+            if (revenge && combat) {
+                trait.setTarget(attacker);
+            }
         }
     }
 

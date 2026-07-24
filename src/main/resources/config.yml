@@ -1,0 +1,66 @@
+# PvPBot Unified Configuration
+# Phase 4 — Global Defaults (overridable per-NPC via /pvpbot settings <botName> <key> <value>)
+
+# Melee & Combat
+combat: true
+revenge: true
+auto-target: true
+target-players: true
+target-mobs: false
+target-bots: false
+criticals: true
+attack-cooldown: 8
+melee-range: 3.5
+move-speed: 1.45
+view-distance: 256.0
+retreat: false
+friendly-fire: false
+attack-invincible: false
+safe-spawn: true
+clear-on-remove: true
+bot-leave-on-death: true
+crit-fall-ticks: 12
+
+# Ranged Combat
+ranged: false
+ranged-min-range: 5.0
+ranged-optimal-range: 15.0
+ranged-max-range: 50.0
+bow-draw-ticks: 20
+arrow-prediction: true
+ranged-strafe: true
+ranged-retreat: false
+
+# Shield & Defenses
+auto-shield: true
+shield-break: true
+shield-break-chance: 30
+shield-hold-ticks: 80
+shield-raise-ticks: 10
+shield-mace: true
+prefer-sword: true
+auto-totem: true
+totem-priority: false
+
+# Survival & Utilities
+auto-armor: true
+auto-weapon: true
+drop-armor: true
+drop-weapon: true
+drop-distance: 3
+interval: 5
+auto-eat: true
+auto-potion: true
+auto-mend: true
+
+# Realism & Misc
+miss-chance: 5
+mistake-chance: 3
+aim-speed: 18
+special-names: false
+max-mass-spawn: 50
+profile-lagg-fix: true
+bhop: false
+idle: true
+idle-radius: 10
+mace: false

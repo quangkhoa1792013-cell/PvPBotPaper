@@ -1,20 +1,36 @@
-// Phase 3.3.2: Relentless Pursuit — No LOS, No Timeout, World-Safe
+// Phase 4.1.1: Functional Settings — target-players, target-bots, scanForTarget
 package com.khoablabla.pvpbot.combat;
 
+import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 
+import org.bukkit.GameMode;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+
+import com.khoablabla.pvpbot.traits.PvPBotTrait;
 
 public final class CombatTargetSelector {
 
     private CombatTargetSelector() {
     }
 
-    public static LivingEntity validateTarget(NPC npc, double range, LivingEntity currentTarget, int tickCounter, int lastDamageTick) {
+    public static LivingEntity validateTarget(NPC npc, double range, LivingEntity currentTarget,
+            int tickCounter, int lastDamageTick, boolean targetPlayers, boolean targetBots) {
         if (currentTarget == null) return null;
         if (currentTarget.isDead() || !currentTarget.isValid()) return null;
         if (!(npc.getEntity() instanceof LivingEntity botEntity)) return null;
+
+        if (currentTarget instanceof Player p && !CitizensAPI.getNPCRegistry().isNPC(p)) {
+            if (!targetPlayers) return null;
+            if (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR) return null;
+        }
+
+        if (CitizensAPI.getNPCRegistry().isNPC(currentTarget)) {
+            NPC targetNpc = CitizensAPI.getNPCRegistry().getNPC(currentTarget);
+            if (targetNpc != null && targetNpc.hasTrait(PvPBotTrait.class) && !targetBots) return null;
+        }
 
         if (!botEntity.getWorld().equals(currentTarget.getWorld())) return null;
 
@@ -22,5 +38,42 @@ public final class CombatTargetSelector {
         if (distSq > range * range) return null;
 
         return currentTarget;
+    }
+
+    public static LivingEntity scanForTarget(NPC npc, double range,
+            boolean targetPlayers, boolean targetBots) {
+        if (!(npc.getEntity() instanceof LivingEntity botEntity)) return null;
+
+        LivingEntity best = null;
+        double bestDistSq = Double.MAX_VALUE;
+        double rangeSq = range * range;
+
+        for (Entity entity : botEntity.getNearbyEntities(range, range, range)) {
+            if (!(entity instanceof LivingEntity candidate)) continue;
+            if (candidate.isDead() || !candidate.isValid()) continue;
+            if (entity.equals(botEntity)) continue;
+            if (!candidate.getWorld().equals(botEntity.getWorld())) continue;
+
+            if (candidate instanceof Player p && !CitizensAPI.getNPCRegistry().isNPC(p)) {
+                if (!targetPlayers) continue;
+                if (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR) continue;
+                if (!botEntity.hasLineOfSight(candidate)) continue;
+            }
+
+            if (CitizensAPI.getNPCRegistry().isNPC(candidate)) {
+                NPC candidateNpc = CitizensAPI.getNPCRegistry().getNPC(candidate);
+                if (candidateNpc != null && candidateNpc.hasTrait(PvPBotTrait.class) && !targetBots) continue;
+            }
+
+            double distSq = botEntity.getLocation().distanceSquared(candidate.getLocation());
+            if (distSq > rangeSq) continue;
+
+            if (distSq < bestDistSq) {
+                bestDistSq = distSq;
+                best = candidate;
+            }
+        }
+
+        return best;
     }
 }
