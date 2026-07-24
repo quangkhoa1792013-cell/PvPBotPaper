@@ -1,4 +1,4 @@
-// Phase 4: Unified Configuration Framework — Dual-Mode Settings Engine
+// Phase 4.1.3: SettingMeta implemented flag + Settings Masking UX
 package com.khoablabla.pvpbot.config;
 
 import net.citizensnpcs.api.npc.NPC;
@@ -21,7 +21,7 @@ public final class SettingsRegistry {
     private final Map<String, SettingMeta<?>> registry;
     private final Map<String, Object> globalCache;
 
-    public record SettingMeta<T>(String key, Class<T> type, T defaultValue, Number min, Number max) {
+    public record SettingMeta<T>(String key, Class<T> type, T defaultValue, Number min, Number max, boolean implemented) {
     }
 
     private SettingsRegistry(JavaPlugin plugin) {
@@ -48,6 +48,16 @@ public final class SettingsRegistry {
 
     public Map<String, SettingMeta<?>> getAllMeta() {
         return Collections.unmodifiableMap(registry);
+    }
+
+    public Map<String, SettingMeta<?>> getImplementedMeta() {
+        Map<String, SettingMeta<?>> result = new LinkedHashMap<>();
+        for (var entry : registry.entrySet()) {
+            if (entry.getValue().implemented()) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return Collections.unmodifiableMap(result);
     }
 
     @SuppressWarnings("unchecked")
@@ -155,61 +165,70 @@ public final class SettingsRegistry {
         reg("melee-range",          Double.class,   3.5,  2.0, 6.0);
         reg("move-speed",           Double.class,   1.45, 0.1, 2.0);
         reg("view-distance",        Double.class,   256.0, 5.0, 512.0);
-        reg("retreat",              Boolean.class,  false);
-        reg("friendly-fire",        Boolean.class,  false);
-        reg("attack-invincible",    Boolean.class,  false);
-        reg("safe-spawn",           Boolean.class,  true);
-        reg("clear-on-remove",      Boolean.class,  true);
-        reg("bot-leave-on-death",   Boolean.class,  true);
-        reg("crit-fall-ticks",      Integer.class,  12,   1, 40);
+        reg("bhop",                 Boolean.class,  false);
 
-        reg("ranged",               Boolean.class,  false);
-        reg("ranged-min-range",     Double.class,   5.0,  1.0, 20.0);
-        reg("ranged-optimal-range", Double.class,   15.0, 1.0, 50.0);
-        reg("ranged-max-range",     Double.class,   50.0, 1.0, 128.0);
-        reg("bow-draw-ticks",       Integer.class,  20,   5, 60);
-        reg("arrow-prediction",     Boolean.class,  true);
-        reg("ranged-strafe",        Boolean.class,  true);
-        reg("ranged-retreat",       Boolean.class,  false);
+        reg("retreat",              Boolean.class,  false,        false);
+        reg("friendly-fire",        Boolean.class,  false,        false);
+        reg("attack-invincible",    Boolean.class,  false);
+        reg("safe-spawn",           Boolean.class,  true,         false);
+        reg("clear-on-remove",      Boolean.class,  true,         false);
+        reg("bot-leave-on-death",   Boolean.class,  true,         false);
+        reg("crit-fall-ticks",      Integer.class,  12,   1, 40,  false);
+
+        reg("ranged",               Boolean.class,  false,        false);
+        reg("ranged-min-range",     Double.class,   5.0,  1.0, 20.0, false);
+        reg("ranged-optimal-range", Double.class,   15.0, 1.0, 50.0, false);
+        reg("ranged-max-range",     Double.class,   50.0, 1.0, 128.0, false);
+        reg("bow-draw-ticks",       Integer.class,  20,   5, 60,  false);
+        reg("arrow-prediction",     Boolean.class,  true,         false);
+        reg("ranged-strafe",        Boolean.class,  true,         false);
+        reg("ranged-retreat",       Boolean.class,  false,        false);
 
         reg("auto-shield",          Boolean.class,  true);
-        reg("shield-break",         Boolean.class,  true);
-        reg("shield-break-chance",  Integer.class,  30,   0, 100);
+        reg("shield-break",         Boolean.class,  true,         false);
+        reg("shield-break-chance",  Integer.class,  30,   0, 100, false);
         reg("shield-hold-ticks",    Integer.class,  80,   10, 200);
         reg("shield-raise-ticks",   Integer.class,  10,   2, 40);
-        reg("shield-mace",          Boolean.class,  true);
-        reg("prefer-sword",         Boolean.class,  true);
-        reg("auto-totem",           Boolean.class,  true);
-        reg("totem-priority",       Boolean.class,  false);
+        reg("shield-mace",          Boolean.class,  true,         false);
+        reg("prefer-sword",         Boolean.class,  true,         false);
+        reg("auto-totem",           Boolean.class,  true,         false);
+        reg("totem-priority",       Boolean.class,  false,        false);
 
-        reg("auto-armor",           Boolean.class,  true);
-        reg("auto-weapon",          Boolean.class,  true);
-        reg("drop-armor",           Boolean.class,  true);
-        reg("drop-weapon",          Boolean.class,  true);
-        reg("drop-distance",        Integer.class,  3,    1, 10);
-        reg("interval",             Integer.class,  5,    1, 100);
-        reg("auto-eat",             Boolean.class,  true);
-        reg("auto-potion",          Boolean.class,  true);
-        reg("auto-mend",            Boolean.class,  true);
+        reg("auto-armor",           Boolean.class,  true,         false);
+        reg("auto-weapon",          Boolean.class,  true,         false);
+        reg("drop-armor",           Boolean.class,  true,         false);
+        reg("drop-weapon",          Boolean.class,  true,         false);
+        reg("drop-distance",        Integer.class,  3,    1, 10,  false);
+        reg("interval",             Integer.class,  5,    1, 100, false);
+        reg("auto-eat",             Boolean.class,  true,         false);
+        reg("auto-potion",          Boolean.class,  true,         false);
+        reg("auto-mend",            Boolean.class,  true,         false);
 
-        reg("miss-chance",          Integer.class,  5,    0, 100);
-        reg("mistake-chance",       Integer.class,  3,    0, 100);
-        reg("aim-speed",            Integer.class,  18,   3, 45);
-        reg("special-names",        Boolean.class,  false);
-        reg("max-mass-spawn",       Integer.class,  50,   50, 10000);
-        reg("profile-lagg-fix",     Boolean.class,  true);
-        reg("bhop",                 Boolean.class,  false);
-        reg("idle",                 Boolean.class,  true);
-        reg("idle-radius",          Integer.class,  10,   3, 50);
-        reg("mace",                 Boolean.class,  false);
+        reg("miss-chance",          Integer.class,  5,    0, 100, false);
+        reg("mistake-chance",       Integer.class,  3,    0, 100, false);
+        reg("aim-speed",            Integer.class,  18,   3, 45,  false);
+        reg("special-names",        Boolean.class,  false,        false);
+        reg("max-mass-spawn",       Integer.class,  50,   50, 10000, false);
+        reg("profile-lagg-fix",     Boolean.class,  true,         false);
+        reg("idle",                 Boolean.class,  true,         false);
+        reg("idle-radius",          Integer.class,  10,   3, 50,  false);
+        reg("mace",                 Boolean.class,  false,        false);
     }
 
     private <T> void reg(String key, Class<T> type, T def) {
-        registry.put(key, new SettingMeta<>(key, type, def, null, null));
+        registry.put(key, new SettingMeta<>(key, type, def, null, null, true));
+    }
+
+    private <T> void reg(String key, Class<T> type, T def, boolean implemented) {
+        registry.put(key, new SettingMeta<>(key, type, def, null, null, implemented));
     }
 
     private <T extends Number> void reg(String key, Class<T> type, T def, T min, T max) {
-        registry.put(key, new SettingMeta<>(key, type, def, min, max));
+        registry.put(key, new SettingMeta<>(key, type, def, min, max, true));
+    }
+
+    private <T extends Number> void reg(String key, Class<T> type, T def, T min, T max, boolean implemented) {
+        registry.put(key, new SettingMeta<>(key, type, def, min, max, implemented));
     }
 
     private Object coerceToType(Object raw, SettingMeta<?> meta) {

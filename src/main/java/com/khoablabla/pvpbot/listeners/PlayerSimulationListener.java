@@ -1,5 +1,6 @@
 // Phase 3.3: Indirect Damage Revenge Tracking & Phantom Respawn Prevention
 // Phase 4.1.1: Revenge gate — respect revenge + combat settings
+// Phase 4.1.3: RANDOM_LOOK + LookClose disable on respawn
 package com.khoablabla.pvpbot.listeners;
 
 import net.citizensnpcs.api.CitizensAPI;
@@ -119,6 +120,9 @@ public class PlayerSimulationListener implements Listener {
                 replacement.data().set(NPC.Metadata.NAMEPLATE_VISIBLE, true);
                 replacement.addTrait(PvPBotTrait.class);
                 replacement.getOrAddTrait(net.citizensnpcs.trait.Gravity.class);
+                if (replacement.hasTrait(net.citizensnpcs.trait.LookClose.class)) {
+                    replacement.getOrAddTrait(net.citizensnpcs.trait.LookClose.class).lookClose(false);
+                }
                 replacement.getNavigator().getDefaultParameters()
                     .distanceMargin(1.0)
                     .pathDistanceMargin(1.0)

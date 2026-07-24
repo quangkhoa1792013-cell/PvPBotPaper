@@ -4,6 +4,7 @@
 // Phase 3.3: Simplified tick sequence — no isJumping coordination
 // Phase 4: Per-NPC local settings overrides
 // Phase 4.1.1: Functional settings — combat, auto-target, target-players, target-bots
+// Phase 4.1.3: target-mobs, attack-invincible, shield defense controller
 package com.khoablabla.pvpbot.traits;
 
 import net.citizensnpcs.api.npc.NPC;
@@ -17,6 +18,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import com.khoablabla.pvpbot.PvPBot;
 import com.khoablabla.pvpbot.combat.CombatTargetSelector;
 import com.khoablabla.pvpbot.combat.MeleeAttackController;
+import com.khoablabla.pvpbot.combat.ShieldDefenseController;
 import com.khoablabla.pvpbot.config.SettingsRegistry;
 import com.khoablabla.pvpbot.movement.BotMovementController;
 
@@ -31,6 +33,7 @@ public class PvPBotTrait extends Trait {
     private LivingEntity target = null;
     private final BotMovementController movementController = new BotMovementController();
     private final MeleeAttackController attackController = new MeleeAttackController();
+    private final ShieldDefenseController shieldController = new ShieldDefenseController();
     private final Map<String, Object> localSettings = new HashMap<>();
 
     public PvPBotTrait() {
@@ -119,18 +122,21 @@ public class PvPBotTrait extends Trait {
             double viewDist = getSetting("view-distance", Double.class);
             boolean targetPlayers = getSetting("target-players", Boolean.class);
             boolean targetBots = getSetting("target-bots", Boolean.class);
+            boolean targetMobs = getSetting("target-mobs", Boolean.class);
+            boolean attackInvincible = getSetting("attack-invincible", Boolean.class);
 
             if (target == null) {
                 boolean autoTarget = getSetting("auto-target", Boolean.class);
                 if (autoTarget) {
-                    target = CombatTargetSelector.scanForTarget(npc, viewDist, targetPlayers, targetBots);
+                    target = CombatTargetSelector.scanForTarget(npc, viewDist,
+                            targetPlayers, targetBots, targetMobs, attackInvincible);
                 }
             } else {
                 target = CombatTargetSelector.validateTarget(npc, viewDist, target, tickCounter,
-                        lastDamageTick, targetPlayers, targetBots);
+                        lastDamageTick, targetPlayers, targetBots, targetMobs, attackInvincible);
             }
 
-            if (target instanceof Player p
+            if (!attackInvincible && target instanceof Player p
                     && (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR)) {
                 target = null;
                 npc.getNavigator().cancelNavigation();
@@ -140,6 +146,7 @@ public class PvPBotTrait extends Trait {
         if (target != null && !target.isDead() && target.isValid()) {
             attackController.handleAttack(npc, target, this);
             target = movementController.handleMovement(npc, target, tickCounter, this);
+            shieldController.handleDefense(npc, target, this);
             idleTickCounter = 0;
         } else {
             target = null;
@@ -153,4 +160,3 @@ public class PvPBotTrait extends Trait {
         }
     }
 }
-

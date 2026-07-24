@@ -63,7 +63,7 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 1) {
             sender.sendMessage("§6=== PvPBot Global Settings ===");
-            for (var entry : reg.getAllMeta().entrySet()) {
+            for (var entry : reg.getImplementedMeta().entrySet()) {
                 String key = entry.getKey();
                 Object val = reg.getGlobal(key, Object.class);
                 sender.sendMessage("§e" + key + "§f: " + val);
@@ -212,6 +212,9 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
         npc.data().set(NPC.Metadata.NAMEPLATE_VISIBLE, true);
         npc.addTrait(PvPBotTrait.class);
         npc.getOrAddTrait(net.citizensnpcs.trait.Gravity.class);
+        if (npc.hasTrait(net.citizensnpcs.trait.LookClose.class)) {
+            npc.getOrAddTrait(net.citizensnpcs.trait.LookClose.class).lookClose(false);
+        }
         npc.getNavigator().getDefaultParameters()
             .distanceMargin(1.0)
             .pathDistanceMargin(1.0)
@@ -376,7 +379,7 @@ public class PvPBotCommand implements CommandExecutor, TabCompleter {
             String sub = args[0].toLowerCase();
             if (sub.equals("settings")) {
                 String partial = args[1].toLowerCase();
-                return SettingsRegistry.getInstance().getAllMeta().keySet().stream()
+                return SettingsRegistry.getInstance().getImplementedMeta().keySet().stream()
                         .filter(k -> k.startsWith(partial))
                         .toList();
             }
